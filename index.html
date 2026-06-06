@@ -723,6 +723,7 @@ ${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
 
 请返回严格JSON（不要markdown代码块）：
 {
+  "title": "给这段对话起个标题，10个字以内，像书名或日记标题",
   "summary": "这次对话的简要回顾（2-3句话）",
   "key_moment": "用户说过的最值得被记住的一句话（原话引用，没有就填''）",
   "ai_message": "你想对用户说的温暖的话（2-3句，像深夜朋友聊天）",
@@ -1162,7 +1163,7 @@ class App {
     if(!cur) {
       this.sid = this._genId();
       await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
-      await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
+      await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'', status:'active' });
     } else {
       this.sid = cur.currentSid;
     }
@@ -1188,6 +1189,16 @@ class App {
     // 加载洞察
     const insights = await this.memory.getInsights();
     this.ui.renderInsights(insights, document.getElementById('insightsEmpty'), document.getElementById('insightsList'));
+
+    // 如果是已完成会话，显示报告
+    const curMeta = await DB.get(this.db, 'smeta', this.sid);
+    if(curMeta && curMeta.status === 'finished') {
+      const reports = await this.memory.getReports(this.sid);
+      if(reports.length > 0) {
+        this.ui.addReportCard(reports[0].data);
+      }
+      this.ui.input.placeholder = '此对话已完成。点右上角☰开始新对话';
+    }
   }
 
   _bindEvents() {
@@ -1281,6 +1292,13 @@ class App {
   async _send() {
     const text = this.ui.input.value.trim(); if(!text) return;
 
+    // 已完成对话不能发消息
+    const meta = await DB.get(this.db, 'smeta', this.sid);
+    if(meta && meta.status === 'finished') {
+      this.ui.toast('此对话已完成。点右上角☰开始新对话');
+      return;
+    }
+
     if(this.generating) { this.api.abort(); this.ui.hideThinking(); this.ui.finishAssistant(); this.ui.setLoading(false); this.generating=false; await new Promise(r=>setTimeout(r,100)); }
 
     this.generating=true;
@@ -1343,11 +1361,12 @@ class App {
   _closeSearch() {
     document.getElementById('searchBar').classList.add('hidden');
     this._clearHighlights();
+    const s = document.getElementById('searchSummary'); if(s) s.remove();
     this.searchMatches=[]; this.searchIdx=-1; this.searchQuery='';
     this._searchTimer=null;
   }
 
-  _doSearch() {
+  async _doSearch() {
     const q = document.getElementById('searchInput').value.trim().toLowerCase();
     if (q === this.searchQuery) return;
     this.searchQuery = q;
@@ -1361,11 +1380,64 @@ class App {
       return;
     }
 
-    const msgEls = document.querySelectorAll('#chatContainer .message.user, #chatContainer .message.assistant');
+    // 全局搜索：查 IndexedDB 所有会话
+    const allMsgs = await DB.all(this.db, 'msgs');
+    const allMeta = await DB.all(this.db, 'smeta');
+    const matches = allMsgs.filter(m => m.content.toLowerCase().includes(q));
     const count = document.getElementById('searchCount');
     const prevBtn = document.getElementById('searchPrev');
     const nextBtn = document.getElementById('searchNext');
 
+    if(matches.length === 0) {
+      count.textContent = '无匹配';
+      prevBtn.disabled = true; nextBtn.disabled = true;
+      return;
+    }
+
+    count.textContent = `共 ${matches.length} 条`;
+    prevBtn.disabled = false; nextBtn.disabled = false;
+
+    // 按会话分组
+    const bySession = {};
+    for(const m of matches) {
+      if(!bySession[m.sid]) bySession[m.sid] = [];
+      bySession[m.sid].push(m);
+    }
+
+    // 显示摘要列表
+    const container = document.getElementById('chatContainer');
+    const oldSummary = document.getElementById('searchSummary');
+    if(oldSummary) oldSummary.remove();
+
+    const summary = document.createElement('div');
+    summary.id = 'searchSummary';
+    summary.style.cssText = 'padding:8px 12px;background:var(--card-bg);border-radius:12px;margin-bottom:8px;max-height:200px;overflow-y:auto;font-size:13px';
+    for(const [sid, ms] of Object.entries(bySession)) {
+      const meta = allMeta.find(m => m.sid === sid);
+      const title = meta?.title || new Date(meta?.createdAt).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) || sid;
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;color:var(--text-secondary)';
+      div.innerHTML = `<span style="font-weight:600;color:var(--accent)">${this.ui.esc(title)}</span> · ${ms.length}条`;
+      div.addEventListener('click', async () => {
+        if(sid !== this.sid) {
+          await this._switchSession(sid);
+          // 切换后重新渲染，再从DOM高亮
+          setTimeout(() => {
+            this.searchQuery = q + '_rehighlight';
+            this._doSearchDOM(q);
+          }, 300);
+        }
+      });
+      summary.appendChild(div);
+    }
+    container.insertBefore(summary, container.firstChild);
+
+    // 在当前会话的DOM中高亮
+    this._doSearchDOM(q);
+  }
+
+  _doSearchDOM(q) {
+    const msgEls = document.querySelectorAll('#chatContainer .message.user, #chatContainer .message.assistant');
     let matchCount = 0;
     msgEls.forEach((el) => {
       const bubble = el.querySelector('.bubble');
@@ -1378,15 +1450,7 @@ class App {
         matchCount++;
       }
     });
-
-    if (matchCount > 0) {
-      count.textContent = `${matchCount} 条匹配`;
-      prevBtn.disabled = false; nextBtn.disabled = false;
-      this._navigateSearch(1);
-    } else {
-      count.textContent = '无匹配';
-      prevBtn.disabled = true; nextBtn.disabled = true;
-    }
+    if(matchCount > 0) this._navigateSearch(1);
   }
 
   _navigateSearch(dir) {
@@ -1408,6 +1472,7 @@ class App {
 
   _clearHighlights() {
     document.querySelectorAll('#chatContainer .message.search-match').forEach(el => el.classList.remove('search-match'));
+    const s = document.getElementById('searchSummary'); if(s) s.remove();
     document.querySelectorAll('#chatContainer .message mark.search-highlight').forEach(m => {
       const parent = m.parentNode;
       parent.replaceChild(document.createTextNode(m.textContent), m);
@@ -1429,7 +1494,13 @@ class App {
     const report = await this.memory.genReport(this.sid);
     if(report) {
       this.ui.addReportCard(report);
-      this.ui.toast('报告已生成。可以滚动查看，随时导出备份 📥');
+      // 锁定会话，保存AI标题
+      const meta = await DB.get(this.db, 'smeta', this.sid) || {};
+      meta.status = 'finished';
+      if(report.title) meta.title = report.title;
+      await DB.put(this.db, 'smeta', meta);
+      this.ui.input.placeholder = '此对话已完成。点右上角☰开始新对话';
+      this.ui.toast('对话已完成，报告已生成 ✨');
     } else {
       this.ui.toast('报告生成失败，请重试');
     }
@@ -1471,7 +1542,7 @@ class App {
   async _newSession() {
     this.sid = this._genId();
     await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
-    await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
+    await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'', status:'active' });
     this._uncompressedCnt=0;
     this.ui.clearChat(); this.ui.showWelcome();
     this.ui.renderTopics(this.memory, this.sid);
@@ -1498,6 +1569,17 @@ class App {
     }
     this.modal.closeAll();
     this.ui.switchTab('chat');
+    // 如果是已完成的对话，显示之前的报告
+    const meta = await DB.get(this.db, 'smeta', newSid);
+    if(meta && meta.status === 'finished') {
+      const reports = await this.memory.getReports(newSid);
+      if(reports.length > 0) {
+        this.ui.addReportCard(reports[0].data);
+      }
+      this.ui.input.placeholder = '此对话已完成。点右上角☰开始新对话';
+    } else {
+      this.ui.input.placeholder = '说点什么吧...';
+    }
     this.ui.toast('已切换对话');
     this.ui.scroll(true);
   }
@@ -1534,18 +1616,49 @@ class App {
     const allMeta = await this.memory.allSessMeta();
     const sessions = allMeta.filter(m=>m.sid!=='current');
     const list = document.getElementById('sessionList');
-    list.innerHTML = sessions.length===0 ? '<p style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px">还没有对话记录</p>' : '';
-    for(const s of sessions) {
-      const title = s.title || await this.memory.sessTitle(s.sid);
-      const isActive = s.sid===this.sid;
-      const date = s.lastActive ? new Date(s.lastActive).toLocaleDateString('zh-CN') : '';
+    list.innerHTML = '';
+
+    if(sessions.length===0) {
+      list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px">还没有对话记录</p>';
+      this.modal.open('sessions');
+      return;
+    }
+
+    const active = sessions.filter(s => s.status !== 'finished');
+    const finished = sessions.filter(s => s.status === 'finished');
+
+    const renderItem = (s) => {
+      const isActive = s.sid === this.sid;
+      const isFinished = s.status === 'finished';
+      // 进行中：显示创建时间；已完成：显示AI标题
+      const title = isFinished ? (s.title || '已完成对话') :
+        (s.createdAt ? new Date(s.createdAt).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '新对话');
+      const subtitle = isFinished && s.lastActive ? `完成于 ${new Date(s.lastActive).toLocaleDateString('zh-CN')}` :
+        (s.lastActive ? `${new Date(s.lastActive).toLocaleDateString('zh-CN')} · ${s.msgCount||0}条` : '');
       const item = document.createElement('div');
-      item.className=`session-item${isActive?' active-session':''}`;
-      item.innerHTML=`<div class="session-info"><div class="session-title">${this.ui.esc(title)}</div><div class="session-date">${date} · ${s.msgCount||0}条</div></div><button class="session-delete" data-sid="${s.sid}">✕</button>`;
+      item.className=`session-item${isActive?' active-session':''}${isFinished?' finished-session':''}`;
+      item.innerHTML=`<div class="session-info"><div class="session-title">${isFinished?'📋 ':''}${this.ui.esc(title)}</div><div class="session-date">${subtitle}</div></div><button class="session-delete" data-sid="${s.sid}">✕</button>`;
       item.addEventListener('click',e=>{if(!e.target.classList.contains('session-delete'))this._switchSession(s.sid);});
       item.querySelector('.session-delete').addEventListener('click',e=>{e.stopPropagation();this._deleteSession(s.sid);});
       list.appendChild(item);
+    };
+
+    if(active.length > 0) {
+      const h = document.createElement('div');
+      h.style.cssText = 'font-size:11px;color:var(--text-muted);padding:8px 16px 4px;text-transform:uppercase;letter-spacing:0.06em';
+      h.textContent = '进行中';
+      list.appendChild(h);
+      active.forEach(renderItem);
     }
+
+    if(finished.length > 0) {
+      const h = document.createElement('div');
+      h.style.cssText = 'font-size:11px;color:var(--text-muted);padding:8px 16px 4px;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px';
+      h.textContent = '已完成';
+      list.appendChild(h);
+      finished.forEach(renderItem);
+    }
+
     this.modal.open('sessions');
   }
 
@@ -1650,7 +1763,8 @@ class App {
             await DB.put(this.db, 'smeta', {
               sid: s.sid || s.sessionId, title: s.title || '',
               createdAt: s.createdAt || Date.now(), lastActive: s.lastActive || Date.now(),
-              msgCount: s.msgCount || s.messageCount || 0, summary: s.summary || ''
+              msgCount: s.msgCount || s.messageCount || 0, summary: s.summary || '',
+              status: s.status || 'active'
             });
           }
         }
@@ -1696,7 +1810,7 @@ class App {
       await DB.clear(this.db, 'reports');
       this.sid=this._genId();
       await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
-      await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
+      await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'', status:'active' });
       this.ui.clearChat(); this.ui.showWelcome();
       this.ui.renderTopics(this.memory, this.sid);
       this.modal.closeAll(); this.ui.toast('数据已清除');
