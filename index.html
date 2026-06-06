@@ -445,49 +445,6 @@ body{
     </div>
   </div>
 
-  <!-- Explore View -->
-  <div class="view" id="viewExplore">
-    <div class="explore-view" id="exploreContent">
-      <div class="explore-header">
-        <h2>🌿 自我探索</h2>
-        <p>温和的引导、专业的方法、安全的练习</p>
-      </div>
-      <div id="exploreCards">
-        <div class="explore-card" data-explore="emotion">
-          <div class="explore-icon">🎭</div>
-          <div class="explore-title">情绪觉察练习</div>
-          <div class="explore-desc">学会命名、接纳和理解自己的情绪</div>
-        </div>
-        <div class="explore-card" data-explore="cognitive">
-          <div class="explore-icon">🧠</div>
-          <div class="explore-title">思维模式识别</div>
-          <div class="explore-desc">发现常见的认知偏差和思维习惯</div>
-        </div>
-        <div class="explore-card" data-explore="selfcomp">
-          <div class="explore-icon">🤲</div>
-          <div class="explore-title">自我关怀练习</div>
-          <div class="explore-desc">学习像对待朋友一样对待自己</div>
-        </div>
-        <div class="explore-card" data-explore="values">
-          <div class="explore-icon">🧭</div>
-          <div class="explore-title">价值观澄清</div>
-          <div class="explore-desc">找到对你真正重要的事情</div>
-        </div>
-        <div class="explore-card" data-explore="stress">
-          <div class="explore-icon">🌊</div>
-          <div class="explore-title">压力应对技巧</div>
-          <div class="explore-desc">实用的即时缓解和长期调节方法</div>
-        </div>
-        <div class="explore-card" data-explore="gratitude">
-          <div class="explore-icon">✨</div>
-          <div class="explore-title">感恩与积极关注</div>
-          <div class="explore-desc">培养发现生活中美好事物的能力</div>
-        </div>
-      </div>
-      <div id="exploreDetail" class="hidden"></div>
-    </div>
-  </div>
-
 </div>
 
 <!-- Bottom Tab Bar -->
@@ -497,9 +454,6 @@ body{
   </button>
   <button class="tab-item" data-tab="insights">
     <span class="tab-icon">🔍</span><span class="tab-label">洞察</span>
-  </button>
-  <button class="tab-item" data-tab="explore">
-    <span class="tab-icon">🌿</span><span class="tab-label">探索</span>
   </button>
 </nav>
 
@@ -594,11 +548,16 @@ const C = {
 function sysPrompt(profile, sessionSummary) {
   let pb = '';
   if (profile && (profile.facts?.length || profile.themes?.length || profile.events?.length)) {
-    pb = '\n\n──── 关于你（长期记忆）────';
-    if (profile.facts?.length) pb += '\n• 已知：' + profile.facts.join('；');
-    if (profile.themes?.length) pb += '\n• 主题：' + profile.themes.join('、');
-    if (profile.events?.length) pb += '\n• 事件：' + profile.events.join('；');
-    pb += '\n──────────────────────────';
+    // 记忆裁剪：太长时随机采样防超出1M
+    const sample = (arr, max) => arr.length <= max ? arr : arr.sort(()=>Math.random()-0.5).slice(0,max);
+    const facts = sample(profile.facts||[], 20);
+    const themes = sample(profile.themes||[], 8);
+    const events = sample(profile.events||[], 10);
+    pb = '\n\n──── 长期记忆 ────';
+    if (facts.length) pb += '\n' + facts.map(f => '• ' + f).join('\n');
+    if (themes.length) pb += '\n反复主题：' + themes.join('、');
+    if (events.length) pb += '\n重要事件：' + events.join('；');
+    pb += '\n──────────────────';
   }
   let sb = '';
   if (sessionSummary) sb = '\n\n──── 本次对话背景 ────\n' + sessionSummary + '\n──────────────────────';
@@ -660,6 +619,8 @@ function sysPrompt(profile, sessionSummary) {
 • 自我对话："如果现在是你最好的朋友在经历这个，你会对ta说什么？能不能把这句话对自己说一遍？"
 
 引导的关键：不是在教用户"怎么做才对"，而是陪他们一起做。做完后问一句"感觉有什么变化吗？"而不是评价他们做得对不对。
+
+重要：练习是辅助工具，不是每次对话都要用。只在用户明显需要时引导，一场对话最多1-2次。如果用户不接茬，别追问——放下练习，回归正常对话。
 
 ═══ 真诚的表达 ═══
 
@@ -811,21 +772,33 @@ ${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
 
     const profile = await this.profile();
     const recentMsgs = allMsgs.sort((a,b)=>b.ts-a.ts).slice(0, 60).reverse();
-    const prompt = `你是一位温和而敏锐的心理观察者。请分析以下用户的对话记录，生成个性化洞察。
+    // 构建完整的长期记忆上下文
+    let fullContext = '';
+    if(profile.facts?.length) fullContext += '\n用户自述：' + profile.facts.join('；');
+    if(profile.themes?.length) fullContext += '\n反复出现的主题：' + profile.themes.join('、');
+    if(profile.events?.length) fullContext += '\n提及的重要事件：' + profile.events.join('；');
 
-用户档案：${profile.facts?.join('；') || '暂无'}
-对话片段：${recentMsgs.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
+    const prompt = `你是「心语」的洞察模式。你的任务是像老朋友翻看日记一样，从用户的对话中发现那些他们自己可能没注意到的规律。
 
-请从以下角度分析，返回严格JSON：
+${fullContext}
+
+最近的对话：
+${recentMsgs.map(m=>(m.role==='user'?'用户：'+m.content:'AI：'+m.content)).join('\n')}
+
+请返回严格JSON：
 {
-  "patterns": [{"title":"发现的模式","body":"具体描述"}],
-  "strengths": [{"title":"用户展现的优势","body":"具体描述"}],
-  "growth": [{"title":"注意到的成长变化","body":"具体描述"}],
-  "suggestion": "一段温暖的建议或引导方向（3-5句话）",
-  "overall": "一段整体的观察（2-3句话）"
+  "patterns": [{"title":"你看到了什么模式","body":"具体说，比如每次提到什么话题你会有什么反应"}],
+  "strengths": [{"title":"用户身上你注意到的力量","body":"不是夸'你很棒'，而是'你在这种情况下选择了…这说明你…'"}],
+  "growth": [{"title":"和之前的对话比，有什么变化","body":"比如以前你会…现在你开始…"}],
+  "suggestion": "一段话——不是建议，更像引导方向（2-3句）",
+  "overall": "整体的观察（1-2句，直接、不绕）"
 }
 
-基于真实对话内容，不要编造。如果某个角度没有足够信息，返回空数组。语气温暖、共情、不评判。`;
+关键：
+• 必须连接长期记忆里的信息和最近的对话——只说有依据的事
+• 不说'你很棒'、'继续加油'这种废话
+• 像一个真正了解用户的人在说话，不给诊断，不贴标签
+• 如果某个角度真的没有足够信息，返回空数组`;
 
     try {
       const r = await this._apiCall(prompt, true, 4096);
@@ -910,61 +883,6 @@ class API {
   }
 }
 
-// ── 探索内容数据 ──────────────────────────────────────────────
-const EXPLORE = {
-  emotion: {
-    title:'🎭 情绪觉察练习', desc:'学会命名、接纳和理解自己的情绪',
-    sections: [
-      {title:'为什么重要',body:'情绪是内心的信使。当我们能够准确地识别和命名情绪时，就能更好地理解自己的需求，而不是被情绪所控制。'},
-      {title:'情绪命名练习',body:'下次当你感到"不舒服"时，试着更具体地命名：是失望？委屈？焦虑？无力？还是别的什么？越具体，你就越接近情绪的源头。拿起手机或纸笔，写下3个可能的情绪词语。'},
-      {title:'身体扫描',body:'情绪往往先在身体上表现出来。闭上眼睛，从头到脚慢慢扫描：肩膀是否紧绷？胃是否不舒服？心跳是否加速？这些身体信号往往比大脑更早知道你的情绪状态。'},
-      {title:'RAIN技巧',body:'这是一个常用的情绪觉察方法：\n• R-识别（Recognize）：注意到情绪的存在\n• A-允许（Allow）：允许情绪在这里，不推开它\n• I-探究（Investigate）：温柔地问自己，这个情绪想告诉我什么\n• N-不认同（Non-identify）：我不是我的情绪，我只是在体验它'},
-    ]
-  },
-  cognitive: {
-    title:'🧠 思维模式识别', desc:'发现常见的认知偏差和思维习惯',
-    sections: [
-      {title:'常见的思维陷阱',body:'• 非黑即白：事情要么完美要么糟糕\n• 过度概括：从一件事推断"我总是…"\n• 灾难化：假设最坏的结果会发生\n• 读心术：以为自己知道别人在想什么\n• 应该思维：认为自己"应该"如何如何'},
-      {title:'思维记录练习',body:'当你注意到一个负面想法时，试着写下：\n1. 具体情境（什么时候、在哪里）\n2. 当时的想法（具体是什么念头）\n3. 情绪反应（感受和身体反应）\n4. 换个角度看（还有其他可能的解释吗？）\n5. 结果（写完后的感受变化）'},
-      {title:'与自己的想法对话',body:'把你的想法想象成一个关心你但有时过度紧张的朋友。你可以对它说："谢谢你的提醒，我听到了。但事情可能没有你想的那么糟。"这比试图消灭这个想法更有效。'},
-    ]
-  },
-  selfcomp: {
-    title:'🤲 自我关怀练习', desc:'学习像对待朋友一样对待自己',
-    sections: [
-      {title:'自我关怀的三个要素',body:'• 自我友善：对自己温柔而非苛刻\n• 共同人性：理解困难和痛苦是人类共有的体验\n• 正念觉察：客观地观察自己的感受，不过度沉浸'},
-      {title:'写一封给自己的信',body:'想象你最好的朋友正在经历你所面临的困难。你会对ta说什么？现在，把那些话写给自己。用同样温暖、理解、支持的语气。即使一开始觉得别扭，也试着写完。'},
-      {title:'自我关怀短语',body:'找一个安静的时刻，把手放在心口，对自己轻声说：\n"此刻我很不容易，我承认这一点。\n痛苦是生活的一部分，我并不孤单。\n愿我对自己温柔一些。\n愿我给自己所需要的耐心。"'},
-      {title:'日常小练习',body:'每天睡前，问自己：今天我做对了什么？即使是小到"按时喝了水"或"对陌生人微笑了"。把这变成睡前仪式，训练大脑关注积极和善意。'},
-    ]
-  },
-  values: {
-    title:'🧭 价值观澄清', desc:'找到对你真正重要的事情',
-    sections: [
-      {title:'为什么价值观重要',body:'价值观是人生的指南针。当我们按照自己的价值观生活时，会感到更充实、更有方向。而当我们偏离价值观时，往往会感到迷茫和不安。'},
-      {title:'探索练习',body:'拿出一张纸或打开备忘录，回答这些问题：\n• 你最钦佩的人是谁？他们身上哪些品质打动你？\n• 如果金钱和别人的眼光都不是问题，你会如何度过每一天？\n• 回顾一次你感到"这很对"的时刻——那时你在做什么？'},
-      {title:'价值观排序',body:'从以下词汇中选出最重要的5个：\n真诚、自由、连接、成长、安全、创造、公正、冒险、平和、贡献、独立、爱、智慧、健康、勇气、美。排出顺序。然后问自己：我的生活安排反映了这个顺序吗？'},
-    ]
-  },
-  stress: {
-    title:'🌊 压力应对技巧', desc:'实用的即时缓解和长期调节方法',
-    sections: [
-      {title:'即时缓解（5分钟以内）',body:'• 478呼吸法：吸气4秒→屏息7秒→呼气8秒，重复3-5次\n• 冷水刺激：用冷水冲手腕或洗脸，激活迷走神经\n• 5-4-3-2-1接地：说出5个看到的、4个摸到的、3个听到的、2个闻到的、1个尝到的\n• 用力握拳10秒然后松开，感受放松的对比'},
-      {title:'日常调节',body:'• 规律运动：哪怕每天15分钟的散步\n• 睡眠优先：保持固定的睡眠和起床时间\n• 社交连接：每天至少和一个让你放松的人说几句话\n• 边界设定：学会说"不"，保护自己的时间和能量'},
-      {title:'长期建设',body:'• 培养一个不需要产出的爱好（画画、弹琴、种花）\n• 学习正念冥想（每天5分钟开始）\n• 建立"我能控制/我不能控制"清单\n• 定期做"信息断食"——暂时远离社交媒体和新闻'},
-    ]
-  },
-  gratitude: {
-    title:'✨ 感恩与积极关注', desc:'培养发现生活中美好事物的能力',
-    sections: [
-      {title:'感恩的科学',body:'研究表明，定期练习感恩可以显著提升幸福感、改善睡眠质量、增强心理韧性。这不是盲目乐观，而是训练大脑注意那些容易忽略的美好瞬间。'},
-      {title:'三件好事练习',body:'每天晚上睡前，写下今天发生的三件好事。不论大小——可能是"阳光透过树叶很好看"，可能是"同事分享了一块饼干"，也可能是"解决了一个难题"。坚持一周，注意自己的感受变化。'},
-      {title:'感恩信',body:'想一个对你产生过积极影响的人，写一封简短的感恩信。不一定要真的发出去——写的过程本身就是一种疗愈。表达你的感谢和具体的影响。'},
-      {title:'平凡的奇迹',body:'选一个日常时刻——刷牙、等红灯、排队——用这个片刻练习留意周围。牙齿的触感、阳光的颜色、周围的声音。每一个平凡的时刻都包含着可以感恩的细节。'},
-    ]
-  }
-};
-
 // ── UI 管理器 ──────────────────────────────────────────────────
 class UI {
   constructor() {
@@ -984,7 +902,7 @@ class UI {
 
   // View switching
   switchTab(tab) {
-    ['viewChat','viewInsights','viewExplore'].forEach(id => document.getElementById(id).classList.remove('active'));
+    ['viewChat','viewInsights'].forEach(id => document.getElementById(id).classList.remove('active'));
     document.getElementById(`view${tab.charAt(0).toUpperCase()+tab.slice(1)}`).classList.add('active');
     document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
     document.querySelector(`.tab-item[data-tab="${tab}"]`).classList.add('active');
@@ -1116,25 +1034,6 @@ class UI {
     }).join('');
   }
 
-  // Explore
-  showExploreDetail(key) {
-    const d=EXPLORE[key]; if(!d) return;
-    document.getElementById('exploreCards').classList.add('hidden');
-    const det=document.getElementById('exploreDetail');
-    det.classList.remove('hidden');
-    det.innerHTML=`
-      <button class="explore-back-btn" id="btnExploreBack">← 返回</button>
-      <div class="explore-detail" style="margin-top:16px">
-        <h3>${d.title}</h3>
-        <p style="color:var(--text-secondary);margin-bottom:16px">${d.desc}</p>
-        ${d.sections.map(s=>`<div class="section"><h4>${s.title}</h4><p>${s.body.replace(/\n/g,'<br>')}</p></div>`).join('')}
-      </div>`;
-    document.getElementById('btnExploreBack').addEventListener('click',()=>{
-      document.getElementById('exploreCards').classList.remove('hidden');
-      det.classList.add('hidden');
-    });
-  }
-
   scroll(force) {
     requestAnimationFrame(()=>{
       if(!force){const d=this.cc.scrollHeight-this.cc.scrollTop-this.cc.clientHeight;if(d>120)return;}
@@ -1263,12 +1162,6 @@ class App {
         this.memory.getInsights().then(ins=>this.ui.renderInsights(ins,document.getElementById('insightsEmpty'),document.getElementById('insightsList')));
       }
     }));
-
-    // Explore cards
-    document.getElementById('exploreCards').addEventListener('click', e=>{
-      const card = e.target.closest('.explore-card');
-      if(card) this.ui.showExploreDetail(card.dataset.explore);
-    });
 
     // Topic cards
     this.ui.topicCards.addEventListener('click', e=>{
