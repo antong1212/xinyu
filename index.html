@@ -1650,7 +1650,7 @@ class App {
     const err = document.getElementById('setupError');
     const proxyInput = document.getElementById('setupProxyInput');
 
-    btn.addEventListener('click', async () => {
+    const handleSetup = async () => {
       const key = input.value.trim();
       if (!key || !key.startsWith('sk-')) {
         err.textContent = '请输入有效的 API Key（以 sk- 开头）';
@@ -1664,11 +1664,10 @@ class App {
       }
       btn.disabled = true;
       btn.textContent = '验证中…';
-      // 快速验证
       try {
         await this._verifyKey();
         overlay.classList.add('hidden');
-        // 重新初始化
+        btn.removeEventListener('click', handleSetup);
         await this._fullInit();
       } catch(e) {
         err.textContent = '连接失败：' + (e.message||'请检查Key和网络');
@@ -1676,7 +1675,8 @@ class App {
         btn.disabled = false;
         btn.textContent = '开始使用';
       }
-    }, { once: true });
+    };
+    btn.addEventListener('click', handleSetup);
 
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') btn.click();
