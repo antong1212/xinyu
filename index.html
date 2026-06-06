@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#f5f0eb">
-<title>心语 · 私人AI</title>
+<title>此间 · 私人AI</title>
 <style>
 /* ===== CSS Variables ===== */
 :root {
@@ -406,11 +406,11 @@ body{
     </div>
     <div class="chat-container" id="chatContainer">
       <div class="welcome" id="welcome">
-        <div class="welcome-emoji">🕯️</div>
+        <div class="welcome-emoji">—</div>
         <div class="welcome-title">这里很安全</div>
         <div class="welcome-sub">想说什么都可以<br>我会记住你说过的每一句话</div>
         <div class="topic-cards" id="topicCards"></div>
-        <div class="topic-refresh" id="topicRefresh" style="display:none">🔄 换一批话题</div>
+        <div class="topic-refresh" id="topicRefresh" style="display:none">换一批话题</div>
       </div>
     </div>
     <div class="chat-input-area">
@@ -423,7 +423,7 @@ body{
       <div class="chat-actions">
         <button class="action-chip" id="chipSearch">🔎 搜索</button>
         <button class="action-chip" id="chipDeep">🌙 深度思考</button>
-        <button class="action-chip" id="chipSummary">✅ 完成对话</button>
+        <button class="action-chip" id="chipSummary">完成对话</button>
       </div>
     </div>
   </div>
@@ -432,16 +432,16 @@ body{
   <div class="view" id="viewInsights">
     <div class="insights-view" id="insightsContent">
       <div class="insights-header">
-        <h2>🔍 个性化洞察</h2>
+        <h2>个性化洞察</h2>
         <p>AI 从对话中发现的模式与思考</p>
       </div>
       <div class="insights-empty" id="insightsEmpty">
-        <div class="emoji">🔮</div>
+        <div style="font-size:48px;margin-bottom:12px;color:var(--text-muted)">—</div>
         <p style="font-size:15px;margin-bottom:8px">还没有生成洞察</p>
         <p style="font-size:13px">多聊几次后，AI 会帮你发现<br>那些你自己可能都没注意到的模式</p>
       </div>
       <div id="insightsList"></div>
-      <button class="insight-generate-btn" id="btnGenerateInsight">✨ 生成新的洞察</button>
+      <button class="insight-generate-btn" id="btnGenerateInsight">生成新的洞察</button>
     </div>
   </div>
 
@@ -450,17 +450,17 @@ body{
 <!-- Bottom Tab Bar -->
 <nav class="tab-bar" id="tabBar">
   <button class="tab-item active" data-tab="chat">
-    <span class="tab-icon">💬</span><span class="tab-label">对话</span>
+    <span class="tab-icon">&#8203;</span><span class="tab-label">对话</span>
   </button>
   <button class="tab-item" data-tab="insights">
-    <span class="tab-icon">🔍</span><span class="tab-label">洞察</span>
+    <span class="tab-icon">&#8203;</span><span class="tab-label">洞察</span>
   </button>
 </nav>
 
 <!-- Sessions Modal -->
 <div class="overlay hidden" id="overlaySessions">
   <div class="modal">
-    <h3>💬 对话记录</h3>
+    <h3>对话记录</h3>
     <div id="sessionList"></div>
     <button class="modal-close" id="btnNewSession">+ 开始新对话</button>
     <button class="modal-close" id="btnCloseSessions" style="margin-top:8px;background:var(--border);border:none">关闭</button>
@@ -470,12 +470,12 @@ body{
 <!-- Menu Modal -->
 <div class="overlay hidden" id="overlayMenu">
   <div class="modal">
-    <h3>⚙️ 设置</h3>
-    <div class="modal-item" id="menuViewProfile"><span>📋 查看我的档案</span><span class="right">›</span></div>
-    <div class="modal-item" id="menuSetApiKey"><span>🔑 设置 API Key</span><span class="right">›</span></div>
-    <div class="modal-item" id="menuExport"><span>📥 导出所有数据</span><span class="right">›</span></div>
-    <div class="modal-item" id="menuImport"><span>📤 导入数据</span><span class="right">›</span></div>
-    <div class="modal-item" id="menuClearData"><span>🗑️ 清除所有数据</span><span class="right" style="color:var(--danger)">⚠</span></div>
+    <h3>设置</h3>
+    <div class="modal-item" id="menuViewProfile"><span>查看我的档案</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuSetApiKey"><span>设置 API Key</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuExport"><span>导出所有数据</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuImport"><span>导入数据</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuClearData"><span>清除所有数据</span><span class="right" style="color:var(--danger)">⚠</span></div>
     <button class="modal-close" id="btnCloseMenu" style="margin-top:8px;background:var(--border);border:none">关闭</button>
   </div>
 </div>
@@ -483,7 +483,7 @@ body{
 <!-- Profile Modal -->
 <div class="overlay hidden" id="overlayProfile">
   <div class="modal">
-    <h3>📋 关于你的档案</h3>
+    <h3>关于你的档案</h3>
     <div id="profileContent" style="margin-bottom:16px"></div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px">AI根据对话自动记录。只有你能看到，数据存储在本地。</p>
     <button class="modal-close" id="btnCloseProfile" style="background:var(--border);border:none">关闭</button>
@@ -493,12 +493,12 @@ body{
 <!-- Setup overlay -->
 <div class="overlay" id="overlaySetup">
   <div class="modal" style="border-radius:var(--radius-lg);text-align:center;padding:32px 20px 24px">
-    <div style="font-size:48px;margin-bottom:12px">🕯️</div>
-    <h3 style="margin-bottom:16px">欢迎回到心语</h3>
+    <div style="font-size:48px;margin-bottom:12px;color:var(--text-muted)">—</div>
+    <h3 style="margin-bottom:16px">欢迎回到此间</h3>
     <button id="btnSetupImport"
       style="width:100%;padding:16px;border-radius:14px;border:none;background:var(--accent);color:#fff;
       font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition);margin-bottom:16px">
-      📤 选择备份文件恢复
+      选择备份文件恢复
     </button>
     <div id="setupFirstTime" style="display:none;text-align:left">
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.6">输入你的 DeepSeek API Key</p>
@@ -527,7 +527,7 @@ body{
 
 <script>
 /* ================================================================
-   心语 v2 · 私人AI伴侣
+   此间 v2 · 私人AI伴侣
    三层记忆 | 话题卡片 | 个性化洞察 | 自我探索 | 完全本地
    ================================================================ */
 
@@ -562,7 +562,7 @@ function sysPrompt(profile, sessionSummary) {
   let sb = '';
   if (sessionSummary) sb = '\n\n──── 本次对话背景 ────\n' + sessionSummary + '\n──────────────────────';
 
-  return `你是「心语」。
+  return `你是「此间」。
 
 ═══ 别搞错了 ═══
 
@@ -585,6 +585,14 @@ function sysPrompt(profile, sessionSummary) {
 2. 连接。用户今天说的话，和上周说的话，和上个月说的话——它们之间有联系吗？用户说"我不在乎那件事"，但上次提起来的时候眼眶红了——温柔地指出来："你说不在乎，但我记得上次聊到这个你沉默了很久。有没有可能不是不在乎，而是太在乎了？"
 
 3. 命名。很多时候用户说不清楚自己怎么了。你的工作是帮他们找到词。"你刚才描述的，听起来不像是生气，更像是一种失望——对自己失望的那种。"
+
+═══ 不评判 ═══
+
+用户在这里说的任何话、任何想法、任何感受——你都不评判。不说"这样想不对"，不说"你应该觉得…"，不说"别人也不容易"（这是在否定用户的感受）。你的角色是理解，不是裁判。
+
+用户可能有阴暗的想法、自私的冲动、说不清的愤怒——这些都是探索的入口。如果用户感觉被你评判了，他们就不会再说了。而如果用户不说了，你什么都帮不上。
+
+安全的环境不是"所有想法都是对的"，而是"所有想法都可以被看见"。当你想要纠正或反驳用户时，先问自己：我是在帮他们看见更多，还是在告诉他们应该怎么想？
 
 ═══ 千万不要做的事 ═══
 
@@ -710,7 +718,7 @@ class Memory {
       const result = await this._apiCall(prompt, true);
       let p; try { p=JSON.parse(result.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim()); } catch(e) { return false; }
       const es = await this.sessSummary(sid);
-      await this.updSessSummary(sid, es ? `${es}\n\n📎 更早：${p.summary}` : p.summary);
+      await this.updSessSummary(sid, es ? `${es}\n\n更早：${p.summary}` : p.summary);
       await this.updProfile({ facts:p.new_facts||[], themes:p.new_themes||[], events:p.new_events||[] });
       for(const m of toC) { m.compressed=true; await DB.put(this.db, 'msgs', m); }
       console.log(`压缩完成: ${toC.length}条`); return true;
@@ -762,10 +770,10 @@ ${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
 
   _defaultTopics() {
     return [
-      {emoji:'💭',title:'今天脑海里出现最多的是什么？',desc:'随便聊聊那些反复出现的念头'},
-      {emoji:'🎭',title:'最近有什么让你情绪波动的事？',desc:'不管是好的还是不好的'},
-      {emoji:'🌙',title:'睡前脑子里在想什么？',desc:'那些安静时刻浮现的想法往往很重要'},
-      {emoji:'🌟',title:'最近有哪个瞬间让你感到"对了"？',desc:'小小的满足感也值得被记住'}
+      {emoji:'',title:'今天脑海里出现最多的是什么？',desc:'随便聊聊那些反复出现的念头'},
+      {emoji:'',title:'最近有什么让你情绪波动的事？',desc:'不管是好的还是不好的'},
+      {emoji:'',title:'睡前脑子里在想什么？',desc:'那些安静时刻浮现的想法往往很重要'},
+      {emoji:'',title:'最近有哪个瞬间让你感到"对了"？',desc:'小小的满足感也值得被记住'}
     ];
   }
 
@@ -784,7 +792,7 @@ ${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
     if(profile.themes?.length) fullContext += '\n反复出现的主题：' + profile.themes.join('、');
     if(profile.events?.length) fullContext += '\n提及的重要事件：' + profile.events.join('；');
 
-    const prompt = `你是「心语」的洞察模式。你的任务是像老朋友翻看日记一样，从用户的对话中发现那些他们自己可能没注意到的规律。
+    const prompt = `你是「此间」的洞察模式。你的任务是像老朋友翻看日记一样，从用户的对话中发现那些他们自己可能没注意到的规律。
 
 ${fullContext}
 
@@ -912,8 +920,8 @@ class UI {
     document.getElementById(`view${tab.charAt(0).toUpperCase()+tab.slice(1)}`).classList.add('active');
     document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
     document.querySelector(`.tab-item[data-tab="${tab}"]`).classList.add('active');
-    const titles = {chat:'心 语',insights:'个性化洞察'};
-    this.navTitle.textContent = titles[tab] || '心 语';
+    const titles = {chat:'此 间',insights:'个性化洞察'};
+    this.navTitle.textContent = titles[tab] || '此 间';
     this.cc.scrollTop = this.cc.scrollHeight;
   }
 
@@ -976,12 +984,12 @@ class UI {
 
   addReportCard(report) {
     const d=document.createElement('div'); d.className='summary-card';
-    let html = '<h4>📋 对话回顾</h4>';
+    let html = '<h4>对话回顾</h4>';
     if(report.summary) html += `<p style="margin-bottom:12px;font-style:italic">${this.esc(report.summary)}</p>`;
-    if(report.key_moment) html += `<div style="text-align:left;margin:12px 0;padding:10px 14px;background:var(--accent-light);border-radius:12px;font-size:13px"><span style="color:var(--accent);font-weight:600">💬 你说过的最重要的话</span><br>「${this.esc(report.key_moment)}」</div>`;
-    if(report.analysis) html += `<p style="text-align:left;margin:8px 0;font-size:13px"><span style="font-weight:600">🔍 观察</span><br>${this.esc(report.analysis)}</p>`;
-    if(report.ai_message) html += `<p style="text-align:left;margin:8px 0;font-size:13px;font-style:italic"><span style="font-weight:600">💌 想对你说</span><br>${this.esc(report.ai_message)}</p>`;
-    if(report.spark) html += `<p style="margin-top:12px;font-weight:500;color:var(--accent)">✨ ${this.esc(report.spark)}</p>`;
+    if(report.key_moment) html += `<div style="text-align:left;margin:12px 0;padding:10px 14px;background:var(--accent-light);border-radius:12px;font-size:13px"><span style="color:var(--accent);font-weight:600">你说过的最重要的话</span><br>「${this.esc(report.key_moment)}」</div>`;
+    if(report.analysis) html += `<p style="text-align:left;margin:8px 0;font-size:13px"><span style="font-weight:600">观察</span><br>${this.esc(report.analysis)}</p>`;
+    if(report.ai_message) html += `<p style="text-align:left;margin:8px 0;font-size:13px;font-style:italic"><span style="font-weight:600">想对你说</span><br>${this.esc(report.ai_message)}</p>`;
+    if(report.spark) html += `<p style="margin-top:12px;font-weight:500;color:var(--accent)">${this.esc(report.spark)}</p>`;
     d.innerHTML = html;
     this.cc.appendChild(d); this.scroll(true);
   }
@@ -1002,7 +1010,7 @@ class UI {
 
   // Topics
   async renderTopics(memory, sid) {
-    this.topicCards.innerHTML='<div class="topic-loading">✨ 准备话题中…</div>';
+    this.topicCards.innerHTML='<div class="topic-loading">准备话题中…</div>';
     document.getElementById('topicRefresh').style.display='none';
     try {
       const topics = await memory.genTopics(sid);
@@ -1030,10 +1038,10 @@ class UI {
       const d=ins.data;
       let html=`<div class="insight-card" style="animation:fadeInUp 0.5s ease">`;
       if(d.overall) html+=`<div class="insight-body" style="font-style:italic;margin-bottom:12px">${this.esc(d.overall)}</div>`;
-      if(d.patterns?.length) html+=`<div class="insight-icon">🧩</div><div class="insight-label">发现的模式</div>`+d.patterns.map(p=>`<div class="insight-title">${this.esc(p.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(p.body)}</div>`).join('');
-      if(d.strengths?.length) html+=`<div class="insight-icon">💪</div><div class="insight-label">你的优势</div>`+d.strengths.map(s=>`<div class="insight-title">${this.esc(s.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(s.body)}</div>`).join('');
-      if(d.growth?.length) html+=`<div class="insight-icon">🌱</div><div class="insight-label">成长变化</div>`+d.growth.map(g=>`<div class="insight-title">${this.esc(g.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(g.body)}</div>`).join('');
-      if(d.suggestion) html+=`<div class="insight-icon">💡</div><div class="insight-label">温柔的提醒</div><div class="insight-body" style="font-style:italic">${this.esc(d.suggestion)}</div>`;
+      if(d.patterns?.length) html+=`<div class="insight-icon"></div><div class="insight-label">发现的模式</div>`+d.patterns.map(p=>`<div class="insight-title">${this.esc(p.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(p.body)}</div>`).join('');
+      if(d.strengths?.length) html+=`<div class="insight-icon"></div><div class="insight-label">你的优势</div>`+d.strengths.map(s=>`<div class="insight-title">${this.esc(s.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(s.body)}</div>`).join('');
+      if(d.growth?.length) html+=`<div class="insight-icon"></div><div class="insight-label">成长变化</div>`+d.growth.map(g=>`<div class="insight-title">${this.esc(g.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(g.body)}</div>`).join('');
+      if(d.suggestion) html+=`<div class="insight-icon"></div><div class="insight-label">温柔的提醒</div><div class="insight-body" style="font-style:italic">${this.esc(d.suggestion)}</div>`;
       html+=`<div class="insight-date">${new Date(ins.ts).toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>`;
       html+=`</div>`;
       return html;
@@ -1265,7 +1273,7 @@ class App {
       else {
         const m=e.message||String(e);
         if(m.startsWith('CORS_OR_NETWORK')) { this.ui.appendAssistant('⚠️ 无法连接API。请确保通过HTTP服务器打开此页面（不要直接双击文件）。'); this.ui.toast('请通过HTTP服务器打开'); }
-        else if(m.includes('401')) { this.ui.appendAssistant('🔑 API Key无效。请在设置中更新。'); this.ui.toast('API Key无效'); }
+        else if(m.includes('401')) { this.ui.appendAssistant('API Key无效。请在设置中更新。'); this.ui.toast('API Key无效'); }
         else if(m.includes('429')) { this.ui.appendAssistant('⏳ 请求太频繁，请稍等。'); this.ui.toast('请求太频繁'); }
         else { this.ui.appendAssistant('抱歉，出了点问题…请稍后再试。'); this.ui.toast('连接失败'); }
       }
@@ -1435,11 +1443,11 @@ class App {
       if(report.title) meta.title = report.title;
       await DB.put(this.db, 'smeta', meta);
       this.ui.input.placeholder = '此对话已完成。点右上角☰开始新对话';
-      this.ui.toast('对话已完成，报告已生成 ✨');
+      this.ui.toast('对话已完成，报告已生成');
     } else {
       this.ui.toast('报告生成失败，请重试');
     }
-    btn.disabled=false; btn.textContent='✅ 完成对话';
+    btn.disabled=false; btn.textContent='完成对话';
     this.generating=false;
   }
 
@@ -1453,7 +1461,7 @@ class App {
     const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs, _key_encoded: encodedKey };
     const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     const url = URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=`xinyu_${new Date().toISOString().slice(0,10)}.json`;
+    const a=document.createElement('a'); a.href=url; a.download=`cijian_${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   }
 
@@ -1466,11 +1474,11 @@ class App {
     if(ins) {
       const insights = await this.memory.getInsights();
       this.ui.renderInsights(insights, document.getElementById('insightsEmpty'), document.getElementById('insightsList'));
-      this.ui.toast('洞察已生成 ✨');
+      this.ui.toast('洞察已生成');
     } else {
       this.ui.toast('需要更多对话才能生成洞察');
     }
-    btn.disabled=false; btn.textContent='✨ 生成新的洞察';
+    btn.disabled=false; btn.textContent='生成新的洞察';
     this.generating=false;
   }
 
@@ -1482,7 +1490,7 @@ class App {
     this.ui.clearChat(); this.ui.showWelcome();
     this.ui.renderTopics(this.memory, this.sid);
     this.ui.switchTab('chat');
-    this.ui.toast('开始新的对话 ✨');
+    this.ui.toast('开始新的对话');
   }
 
   async _switchSession(newSid) {
@@ -1572,7 +1580,7 @@ class App {
         (s.lastActive ? `${new Date(s.lastActive).toLocaleDateString('zh-CN')} · ${s.msgCount||0}条` : '');
       const item = document.createElement('div');
       item.className=`session-item${isActive?' active-session':''}${isFinished?' finished-session':''}`;
-      item.innerHTML=`<div class="session-info"><div class="session-title">${isFinished?'📋 ':''}${this.ui.esc(title)}</div><div class="session-date">${subtitle}</div></div><button class="session-delete" data-sid="${s.sid}">✕</button>`;
+      item.innerHTML=`<div class="session-info"><div class="session-title">${isFinished?'':''}${this.ui.esc(title)}</div><div class="session-date">${subtitle}</div></div><button class="session-delete" data-sid="${s.sid}">✕</button>`;
       item.addEventListener('click',e=>{if(!e.target.classList.contains('session-delete'))this._switchSession(s.sid);});
       item.querySelector('.session-delete').addEventListener('click',e=>{e.stopPropagation();this._deleteSession(s.sid);});
       list.appendChild(item);
@@ -1602,7 +1610,7 @@ class App {
     const content = document.getElementById('profileContent');
     let html='';
     html+='<div class="profile-section"><div class="profile-label">已知信息</div>';
-    html+=profile.facts?.length ? `<div class="profile-text">${profile.facts.map(f=>'• '+this.ui.esc(f)).join('<br>')}</div>` : '<div class="profile-empty">还没有记录…多聊聊吧 🤗</div>';
+    html+=profile.facts?.length ? `<div class="profile-text">${profile.facts.map(f=>'• '+this.ui.esc(f)).join('<br>')}</div>` : '<div class="profile-empty">还没有记录…多聊聊吧</div>';
     html+='</div><div class="profile-section"><div class="profile-label">反复出现的主题</div>';
     html+=profile.themes?.length ? `<div class="profile-text">${profile.themes.map(t=>'• '+this.ui.esc(t)).join('<br>')}</div>` : '<div class="profile-empty">还没有发现明显的主题</div>';
     html+='</div><div class="profile-section"><div class="profile-label">重要事件</div>';
@@ -1635,9 +1643,9 @@ class App {
       const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs, _key_encoded: encodedKey };
       const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
       const url = URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download=`xinyu_${new Date().toISOString().slice(0,10)}.json`;
+      const a=document.createElement('a'); a.href=url; a.download=`cijian_${new Date().toISOString().slice(0,10)}.json`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      this.modal.closeAll(); this.ui.toast('数据已导出，建议存到云盘或发给自己备份 📥');
+      this.modal.closeAll(); this.ui.toast('数据已导出');
     } catch(e) { this.ui.toast('导出失败'); }
   }
 
@@ -1823,8 +1831,8 @@ class App {
 // ── PWA 支持 ──────────────────────────────────────────────────
 (function setupPWA() {
   const manifest = {
-    name: '心语 · 私人AI',
-    short_name: '心语',
+    name: '此间 · 私人AI',
+    short_name: '此间',
     description: '温暖私密的AI伴侣，了解你、记住你',
     start_url: location.href,
     display: 'standalone',
@@ -1832,7 +1840,7 @@ class App {
     theme_color: '#f5f0eb',
     orientation: 'portrait',
     icons: [{
-      src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="36" fill="#b8754f"/><text x="96" y="120" font-size="90" text-anchor="middle" fill="white">🕯️</text></svg>'),
+      src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="36" fill="#b8754f"/><text x="96" y="120" font-size="90" text-anchor="middle" fill="white">—</text></svg>'),
       sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable'
     }]
   };
