@@ -906,7 +906,7 @@ class UI {
     document.getElementById(`view${tab.charAt(0).toUpperCase()+tab.slice(1)}`).classList.add('active');
     document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
     document.querySelector(`.tab-item[data-tab="${tab}"]`).classList.add('active');
-    const titles = {chat:'心 语',insights:'个性化洞察',explore:'自我探索'};
+    const titles = {chat:'心 语',insights:'个性化洞察'};
     this.navTitle.textContent = titles[tab] || '心 语';
     this.cc.scrollTop = this.cc.scrollHeight;
   }
