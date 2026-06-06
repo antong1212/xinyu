@@ -1135,11 +1135,10 @@ class App {
   }
 
   async init() {
-    if (!C.apiKey) {
-      this._showSetup();
-      return;
-    }
-    await this._initAfterSetup();
+    // 每次打开清空所有数据，用户手动导入备份
+    localStorage.clear();
+    try { indexedDB.deleteDatabase(C.dbName); } catch(e) {}
+    this._showSetup();
   }
 
   async _initAfterSetup() {
@@ -1654,8 +1653,15 @@ class App {
           }
         }
 
-        this.ui.toast('导入成功 ✅');
-        location.reload();
+        this.ui.toast('正在恢复数据…');
+        try {
+          document.getElementById('overlaySetup').classList.add('hidden');
+          await this._initAfterSetup();
+          this.ui.toast('数据已恢复 ✅');
+        } catch(initErr) {
+          console.error('初始化失败', initErr);
+          this.ui.toast('初始化失败，请刷新页面重试');
+        }
       } catch(e) {
         console.error('导入失败', e);
         this.ui.toast('导入失败：' + (e.message || e.toString() || '文件格式错误'));
