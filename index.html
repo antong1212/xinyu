@@ -423,7 +423,7 @@ body{
       <div class="chat-actions">
         <button class="action-chip" id="chipSearch">🔎 搜索</button>
         <button class="action-chip" id="chipDeep">🌙 深度思考</button>
-        <button class="action-chip" id="chipSummary">📝 生成总结</button>
+        <button class="action-chip" id="chipSummary">✅ 完成对话</button>
       </div>
     </div>
   </div>
@@ -643,6 +643,11 @@ const DB = {
           const si = d.createObjectStore('insights', { keyPath: 'id', autoIncrement: true });
           si.createIndex('ts', 'ts', { unique: false });
         }
+        if (!d.objectStoreNames.contains('reports')) {
+          const sr = d.createObjectStore('reports', { keyPath: 'id', autoIncrement: true });
+          sr.createIndex('sid', 'sid', { unique: false });
+          sr.createIndex('ts', 'ts', { unique: false });
+        }
       };
       r.onsuccess = () => ok(r.result);
       r.onerror = () => no(r.error);
@@ -699,10 +704,39 @@ class Memory {
     } catch(e) { console.error('压缩失败',e); return false; }
   }
 
-  async genSummary(sid) {
+  async genReport(sid) {
     const ms = await this.allMsgs(sid); if(ms.length<2) return null;
-    const prompt = `为以下对话生成温暖有洞察力的总结（2-4句话，直接输出文字）：\n\n${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}\n\n从以下角度：主要话题、情绪走向、用户在意的事、值得继续关注的方向。`;
-    try { const r = await this._apiCall(prompt, true); const s = r.trim(); await this.updSessSummary(sid, s); return s; } catch(e) { return null; }
+    const prompt = `你是一位温柔的心理观察者。请为以下对话生成一份回顾报告。
+
+对话内容：
+${ms.map(m=>(m.role==='user'?'用户'：${m.content}':'AI'：${m.content}`)).join('\n')}
+
+请返回严格JSON（不要markdown代码块）：
+{
+  "summary": "这次对话的简要回顾（2-3句话）",
+  "key_moment": "用户说过的最值得被记住的一句话（原话引用，没有就填''）",
+  "ai_message": "你想对用户说的温暖的话（2-3句，像深夜朋友聊天）",
+  "analysis": "观察到的情绪脉络和值得关注的信号（2-3句）",
+  "spark": "一个温暖的收尾——可以是一个问题引导下次对话，也可以是一句祝福（1句话）"
+}
+
+语气温暖、真诚、不评判。基于对话内容，不编造。如果某个字段没有足够信息就留空字符串。`;
+
+    try {
+      const r = await this._apiCall(prompt, true, 4096);
+      const p = JSON.parse(r.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim());
+      // 存储报告
+      const report = { sid, ts: Date.now(), data: p };
+      await DB.put(this.db, 'reports', report);
+      // 同时更新会话摘要（用 summary 字段）
+      await this.updSessSummary(sid, p.summary || '');
+      return p;
+    } catch(e) { console.error('报告生成失败',e); return null; }
+  }
+
+  async getReports(sid) {
+    const all = await DB.byIdx(this.db, 'reports', 'sid', sid);
+    return all.sort((a,b)=>b.ts-a.ts);
   }
 
   async genTopics(sid) {
@@ -969,9 +1003,15 @@ class UI {
     d.innerHTML=`<div class="bubble">${html}</div>`; this.cc.appendChild(d); this.scroll(true);
   }
 
-  addSummaryCard(text) {
+  addReportCard(report) {
     const d=document.createElement('div'); d.className='summary-card';
-    d.innerHTML=`<h4>📝 对话总结</h4><p>${this.esc(text)}</p>`;
+    let html = '<h4>📋 对话回顾</h4>';
+    if(report.summary) html += `<p style="margin-bottom:12px;font-style:italic">${this.esc(report.summary)}</p>`;
+    if(report.key_moment) html += `<div style="text-align:left;margin:12px 0;padding:10px 14px;background:var(--accent-light);border-radius:12px;font-size:13px"><span style="color:var(--accent);font-weight:600">💬 你说过的最重要的话</span><br>「${this.esc(report.key_moment)}」</div>`;
+    if(report.analysis) html += `<p style="text-align:left;margin:8px 0;font-size:13px"><span style="font-weight:600">🔍 观察</span><br>${this.esc(report.analysis)}</p>`;
+    if(report.ai_message) html += `<p style="text-align:left;margin:8px 0;font-size:13px;font-style:italic"><span style="font-weight:600">💌 想对你说</span><br>${this.esc(report.ai_message)}</p>`;
+    if(report.spark) html += `<p style="margin-top:12px;font-weight:500;color:var(--accent)">✨ ${this.esc(report.spark)}</p>`;
+    d.innerHTML = html;
     this.cc.appendChild(d); this.scroll(true);
   }
 
@@ -1132,7 +1172,7 @@ class App {
     this.ui.input.addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this._send();} });
 
     this.ui.chipDeep.addEventListener('click', ()=>this.ui.setDeepMode(!this.ui.deepMode));
-    this.ui.chipSummary.addEventListener('click', ()=>this._genSummary());
+    this.ui.chipSummary.addEventListener('click', ()=>this._finishConversation());
     document.getElementById('chipSearch').addEventListener('click', ()=>this._toggleSearch());
     document.getElementById('searchClose').addEventListener('click', ()=>this._closeSearch());
     document.getElementById('searchInput').addEventListener('input', ()=>{
@@ -1355,12 +1395,22 @@ class App {
     document.getElementById('searchNext').disabled = true;
   }
 
-  async _genSummary() {
-    if(this.generating) return; this.generating=true;
-    this.ui.toast('正在生成对话总结…');
-    const s = await this.memory.genSummary(this.sid);
-    if(s) { this.ui.addSummaryCard(s); this.ui.toast('总结已生成 ✨'); }
-    else this.ui.toast('还没有足够的对话内容');
+  async _finishConversation() {
+    if(this.generating) return;
+    const ms = await this.memory.allMsgs(this.sid);
+    if(ms.length<2) { this.ui.toast('再聊几句吧，现在对话内容还太少'); return; }
+    this.generating=true;
+    const btn = this.ui.chipSummary;
+    btn.disabled=true; btn.textContent='⏳ 生成报告中…';
+
+    const report = await this.memory.genReport(this.sid);
+    if(report) {
+      this.ui.addReportCard(report);
+      this.ui.toast('对话报告已生成，开始新对话请点右上角 ☰ ✨');
+    } else {
+      this.ui.toast('报告生成失败，请重试');
+    }
+    btn.disabled=false; btn.textContent='✅ 完成对话';
     this.generating=false;
   }
 
@@ -1488,7 +1538,8 @@ class App {
       const profile = await this.memory.profile();
       const allMeta = await DB.all(this.db, 'smeta');
       const insights = await DB.all(this.db, 'insights');
-      const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, messages:allMsgs };
+      const reports = await DB.all(this.db, 'reports');
+      const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs };
       const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
       const url = URL.createObjectURL(blob);
       const a=document.createElement('a'); a.href=url; a.download=`xinyu_${new Date().toISOString().slice(0,10)}.json`;
@@ -1513,13 +1564,14 @@ class App {
           this.ui.toast('无效的备份文件'); return;
         }
 
-        if (!confirm(`即将导入：\n• ${data.messages.length} 条消息\n• ${data.insights?.length||0} 条洞察\n• ${data.sessions?.length||0} 个会话\n\n会覆盖现有数据，确定继续？`)) return;
+        if (!confirm(`即将导入：\n• ${data.messages.length} 条消息\n• ${data.insights?.length||0} 条洞察\n• ${data.reports?.length||0} 份报告\n• ${data.sessions?.length||0} 个会话\n\n会覆盖现有数据，确定继续？`)) return;
 
         // 清除现有数据
         await DB.clear(this.db, 'msgs');
         await DB.clear(this.db, 'profile');
         await DB.clear(this.db, 'smeta');
         await DB.clear(this.db, 'insights');
+        await DB.clear(this.db, 'reports');
 
         // 导入消息
         if (data.messages) {
@@ -1555,6 +1607,13 @@ class App {
           }
         }
 
+        // 导入报告
+        if (data.reports) {
+          for (const r of data.reports) {
+            await DB.put(this.db, 'reports', { sid: r.sid, ts: r.ts || Date.now(), data: r.data });
+          }
+        }
+
         this.ui.toast('导入成功 ✅');
         // 重新加载
         location.reload();
@@ -1573,6 +1632,7 @@ class App {
     try {
       await DB.clear(this.db, 'msgs'); await DB.clear(this.db, 'profile');
       await DB.clear(this.db, 'smeta'); await DB.clear(this.db, 'insights');
+      await DB.clear(this.db, 'reports');
       this.sid=this._genId();
       await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
       await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
