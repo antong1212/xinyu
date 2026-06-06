@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f5f0eb">
+<title>心语 · 私人AI</title>
+<style>
+/* ===== CSS Variables ===== */
+:root {
+  --bg: #f5f0eb;
+  --surface: #fffdf9;
+  --user-bubble: #e0b9a8;
+  --user-text: #3d1f12;
+  --ai-bubble: #fefaf6;
+  --ai-text: #3d2c24;
+  --accent: #b8754f;
+  --accent-hover: #9e6240;
+  --accent-light: #f0e2d8;
+  --text: #3d2c24;
+  --text-secondary: #8c7b71;
+  --text-muted: #b8a99f;
+  --border: #e8ddd3;
+  --shadow: 0 2px 12px rgba(60,30,15,0.06);
+  --thinking-dot: #c9977a;
+  --danger: #c05746;
+  --success: #6b9e7a;
+  --overlay: rgba(30,15,8,0.3);
+  --card-bg: #fffdf9;
+  --card-border: #ebe2d8;
+  --input-bg: #faf6f0;
+  --nav-bg: rgba(245,240,235,0.85);
+  --tab-active: #b8754f;
+  --tab-inactive: #b8a99f;
+  --radius-sm: 10px;
+  --radius: 18px;
+  --radius-lg: 24px;
+  --font: -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1715;
+    --surface: #24211e;
+    --user-bubble: #7a4f3a;
+    --user-text: #f0ddd0;
+    --ai-bubble: #2d2823;
+    --ai-text: #e0d6ce;
+    --accent: #c99474;
+    --accent-hover: #d6a888;
+    --accent-light: #332820;
+    --text: #e0d6ce;
+    --text-secondary: #9c8d80;
+    --text-muted: #6b5f55;
+    --border: #3a332d;
+    --shadow: 0 2px 12px rgba(0,0,0,0.25);
+    --thinking-dot: #b88a70;
+    --danger: #d47363;
+    --success: #7dae8c;
+    --overlay: rgba(0,0,0,0.5);
+    --card-bg: #2a2520;
+    --card-border: #3a332d;
+    --input-bg: #22201d;
+    --nav-bg: rgba(26,23,21,0.88);
+    --tab-active: #c99474;
+    --tab-inactive: #6b5f55;
+  }
+}
+
+/* ===== Reset ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+body{
+  height:100%;overflow:hidden;
+  font-family:var(--font);background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;
+  user-select:none;-webkit-user-select:none;
+  transition:background var(--transition),color var(--transition);
+}
+
+/* ===== Top Nav ===== */
+.top-nav{
+  position:sticky;top:0;z-index:100;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;
+  padding-top:max(12px,env(safe-area-inset-top));
+  background:var(--nav-bg);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.nav-title{font-size:17px;font-weight:600;letter-spacing:0.02em;color:var(--text)}
+.nav-btn{
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:transparent;color:var(--text-secondary);
+  font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--transition);
+}
+.nav-btn:active{background:var(--border);transform:scale(0.92)}
+
+/* ===== Main Content ===== */
+.main-content{flex:1;overflow:hidden;position:relative}
+
+/* ===== View Container ===== */
+.view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;display:none;flex-direction:column}
+.view.active{display:flex}
+.view::-webkit-scrollbar{width:0}
+
+/* ===== Chat View ===== */
+.chat-container{flex:1;padding:12px 12px 20px;display:flex;flex-direction:column;gap:8px}
+.chat-input-area{
+  flex-shrink:0;padding:10px 12px;
+  padding-bottom:max(10px,var(--safe-bottom));
+  background:var(--nav-bg);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);
+}
+.chat-input-row{display:flex;align-items:flex-end;gap:8px}
+.chat-input{
+  flex:1;min-height:42px;max-height:120px;
+  padding:10px 14px;border-radius:22px;
+  border:1.5px solid var(--border);
+  background:var(--input-bg);color:var(--text);
+  font-size:15px;font-family:var(--font);line-height:1.5;
+  resize:none;outline:none;transition:all var(--transition);
+}
+.chat-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(184,117,79,0.1)}
+.chat-input::placeholder{color:var(--text-muted)}
+.send-btn{
+  width:42px;height:42px;border-radius:50%;flex-shrink:0;
+  border:none;background:var(--accent);color:#fff;
+  font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--transition);
+}
+.send-btn:active{transform:scale(0.9);opacity:0.85}
+.send-btn:disabled{opacity:0.4;pointer-events:none}
+.send-btn svg{width:20px;height:20px}
+.chat-actions{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px}
+.action-chip{
+  font-size:12px;padding:6px 14px;border-radius:16px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text-secondary);cursor:pointer;
+  transition:all var(--transition);font-family:var(--font);
+}
+.action-chip:active{background:var(--border)}
+.action-chip.active{background:var(--accent-light);color:var(--accent);border-color:var(--accent)}
+
+/* ===== Welcome (inside chat view) ===== */
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;text-align:center}
+.welcome.condensed{justify-content:flex-start;padding-top:16px}
+.welcome-emoji{font-size:48px;margin-bottom:12px;animation:float 3s ease-in-out infinite}
+.welcome-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px}
+.welcome-sub{font-size:13px;color:var(--text-secondary);max-width:260px;line-height:1.6;margin-bottom:20px}
+
+/* Topic Cards */
+.topic-cards{width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px}
+.topic-card{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:14px 16px;border-radius:var(--radius);
+  background:var(--card-bg);border:1px solid var(--card-border);
+  cursor:pointer;transition:all var(--transition);
+  text-align:left;
+}
+.topic-card:active{transform:scale(0.97);border-color:var(--accent);background:var(--accent-light)}
+.topic-card-emoji{font-size:26px;flex-shrink:0;line-height:1}
+.topic-card-body{flex:1;min-width:0}
+.topic-card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.topic-card-desc{font-size:12px;color:var(--text-secondary);line-height:1.5}
+.topic-card-arrow{color:var(--text-muted);font-size:16px;flex-shrink:0;align-self:center}
+.topic-loading{text-align:center;padding:16px;color:var(--text-muted);font-size:13px}
+.topic-refresh{
+  font-size:11px;color:var(--text-muted);cursor:pointer;
+  padding:8px;margin-top:4px;text-decoration:underline;text-underline-offset:3px
+}
+
+/* Messages */
+.message{display:flex;flex-direction:column;max-width:85%;animation:fadeInUp 0.35s ease}
+.message.user{align-self:flex-end;align-items:flex-end}
+.message.assistant{align-self:flex-start;align-items:flex-start}
+.message.system{align-self:center;max-width:92%}
+.bubble{padding:12px 16px;border-radius:var(--radius);font-size:15px;line-height:1.6;word-break:break-word}
+.message.user .bubble{background:var(--user-bubble);color:var(--user-text);border-bottom-right-radius:6px}
+.message.assistant .bubble{background:var(--ai-bubble);color:var(--ai-text);border:1px solid var(--border);border-bottom-left-radius:6px}
+.message.system .bubble{background:var(--card-bg);border:1px dashed var(--border);border-radius:var(--radius-lg);font-size:13px;color:var(--text-secondary);text-align:center;line-height:1.7;padding:16px 20px}
+.message-meta{font-size:11px;color:var(--text-muted);margin-top:3px;padding:0 8px}
+.thinking-indicator{
+  display:flex;align-items:center;gap:4px;padding:10px 16px;
+  font-size:13px;color:var(--text-secondary);align-self:flex-start;animation:fadeInUp 0.3s ease
+}
+.thinking-indicator .dots{display:flex;gap:3px;margin-left:2px}
+.thinking-indicator .dots span{width:5px;height:5px;border-radius:50%;background:var(--thinking-dot);animation:dotPulse 1.4s ease-in-out infinite}
+.thinking-indicator .dots span:nth-child(2){animation-delay:0.2s}
+.thinking-indicator .dots span:nth-child(3){animation-delay:0.4s}
+
+/* Summary card in chat */
+.summary-card{
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:20px;margin:12px 0;animation:fadeInUp 0.5s ease
+}
+.summary-card h4{font-size:14px;color:var(--accent);margin-bottom:10px;font-weight:600}
+.summary-card p{font-size:14px;line-height:1.8;color:var(--text-secondary)}
+
+/* ===== Insights View ===== */
+.insights-view{padding:16px;gap:16px}
+.insights-header{text-align:center;padding:16px 0 8px}
+.insights-header h2{font-size:20px;font-weight:700;color:var(--text)}
+.insights-header p{font-size:13px;color:var(--text-secondary);margin-top:4px}
+.insights-empty{text-align:center;padding:40px 20px;color:var(--text-muted)}
+.insights-empty .emoji{font-size:48px;margin-bottom:12px}
+.insight-card{
+  background:var(--card-bg);border:1px solid var(--card-border);
+  border-radius:var(--radius-lg);padding:20px;animation:fadeInUp 0.5s ease
+}
+.insight-card .insight-icon{font-size:28px;margin-bottom:8px}
+.insight-card .insight-label{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:4px;font-weight:600}
+.insight-card .insight-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px}
+.insight-card .insight-body{font-size:14px;line-height:1.8;color:var(--text-secondary)}
+.insight-card .insight-date{font-size:11px;color:var(--text-muted);margin-top:12px;text-align:right}
+.insight-generate-btn{
+  display:block;width:100%;padding:14px;margin-top:8px;
+  border-radius:var(--radius);border:2px dashed var(--accent);
+  background:var(--accent-light);color:var(--accent);
+  font-size:15px;font-weight:600;cursor:pointer;
+  font-family:var(--font);transition:all var(--transition)
+}
+.insight-generate-btn:active{transform:scale(0.97);opacity:0.8}
+
+/* ===== Explore View ===== */
+.explore-view{padding:16px;gap:16px}
+.explore-header{text-align:center;padding:16px 0 8px}
+.explore-header h2{font-size:20px;font-weight:700;color:var(--text)}
+.explore-header p{font-size:13px;color:var(--text-secondary);margin-top:4px}
+.explore-card{
+  background:var(--card-bg);border:1px solid var(--card-border);
+  border-radius:var(--radius-lg);padding:20px;cursor:pointer;
+  transition:all var(--transition);animation:fadeInUp 0.4s ease
+}
+.explore-card:active{transform:scale(0.97);border-color:var(--accent)}
+.explore-card .explore-icon{font-size:32px;margin-bottom:8px}
+.explore-card .explore-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px}
+.explore-card .explore-desc{font-size:13px;color:var(--text-secondary);line-height:1.6}
+.explore-detail{animation:fadeInUp 0.4s ease}
+.explore-detail h3{font-size:18px;color:var(--text);margin-bottom:12px}
+.explore-detail .section{margin-bottom:16px}
+.explore-detail .section h4{font-size:14px;color:var(--accent);margin-bottom:6px;font-weight:600}
+.explore-detail .section p,.explore-detail .section li{font-size:14px;line-height:1.8;color:var(--text-secondary)}
+.explore-detail .section ul{padding-left:20px}
+.explore-back-btn{
+  padding:10px 18px;border-radius:20px;border:1px solid var(--border);
+  background:transparent;color:var(--text-secondary);cursor:pointer;
+  font-family:var(--font);font-size:13px;transition:all var(--transition)
+}
+.explore-back-btn:active{background:var(--border)}
+
+/* ===== Bottom Tab Bar ===== */
+.tab-bar{
+  flex-shrink:0;display:flex;align-items:center;justify-content:space-around;
+  padding:6px 0;padding-bottom:max(6px,var(--safe-bottom));
+  background:var(--nav-bg);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);z-index:100
+}
+.tab-item{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:6px 16px;cursor:pointer;transition:all var(--transition);
+  border:none;background:transparent;font-family:var(--font);
+  color:var(--tab-inactive);
+}
+.tab-item .tab-icon{font-size:22px;line-height:1;transition:transform var(--transition)}
+.tab-item .tab-label{font-size:10px;font-weight:500;letter-spacing:0.04em}
+.tab-item.active{color:var(--tab-active)}
+.tab-item.active .tab-icon{transform:scale(1.1)}
+.tab-item:active{opacity:0.7}
+
+/* ===== Overlay / Modal ===== */
+.overlay{
+  position:fixed;inset:0;z-index:200;
+  background:var(--overlay);
+  display:flex;align-items:flex-end;justify-content:center;
+  animation:fadeIn 0.2s ease
+}
+.modal{
+  width:100%;max-width:500px;max-height:75vh;
+  background:var(--surface);border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  overflow-y:auto;padding:20px 16px 32px;
+  animation:slideUp 0.3s ease
+}
+.modal h3{font-size:17px;font-weight:600;margin-bottom:16px;color:var(--text)}
+.modal-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 0;border-bottom:1px solid var(--border);
+  cursor:pointer;font-size:15px;color:var(--text);transition:all var(--transition)
+}
+.modal-item:active{opacity:0.6}
+.modal-item .right{color:var(--text-muted);font-size:13px}
+.modal-close{
+  margin-top:16px;width:100%;padding:14px;border-radius:var(--radius);
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+  font-size:15px;cursor:pointer;font-family:var(--font);transition:all var(--transition)
+}
+.modal-close:active{background:var(--border)}
+
+/* Session list in modal */
+.session-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-radius:var(--radius);margin-bottom:6px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--border);transition:all var(--transition)
+}
+.session-item:active{background:var(--border)}
+.session-item.active-session{border-color:var(--accent);background:var(--accent-light)}
+.session-info{flex:1;min-width:0}
+.session-title{font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-date{font-size:11px;color:var(--text-muted);margin-top:2px}
+.session-delete{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  border:none;background:transparent;color:var(--text-muted);
+  font-size:16px;cursor:pointer
+}
+
+/* Profile */
+.profile-section{margin-bottom:16px}
+.profile-label{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:6px}
+.profile-text{font-size:14px;line-height:1.7;color:var(--text-secondary);background:var(--input-bg);padding:12px 14px;border-radius:var(--radius-sm)}
+.profile-empty{font-size:13px;color:var(--text-muted);font-style:italic}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+  z-index:300;padding:10px 20px;border-radius:20px;
+  background:var(--text);color:var(--surface);
+  font-size:13px;font-weight:500;pointer-events:none;
+  animation:toastIn 0.3s ease,toastOut 0.3s ease 2.2s forwards;
+}
+
+/* Animations */
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes dotPulse{0%,80%,100%{opacity:0.3;transform:scale(0.8)}40%{opacity:1;transform:scale(1.2)}}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}}
+@keyframes toastOut{to{opacity:0;transform:translateX(-50%) translateY(-10px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:0.6}50%{opacity:1}}
+
+.hidden{display:none!important}
+
+@media (min-width: 600px) {
+  .chat-container{padding:16px 15% 24px}
+  .message{max-width:75%}
+  .insights-view,.explore-view{padding:24px 15%}
+}
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<nav class="top-nav">
+  <button class="nav-btn" id="btnSessions">☰</button>
+  <span class="nav-title" id="navTitle">心 语</span>
+  <button class="nav-btn" id="btnMenu">⋯</button>
+</nav>
+
+<!-- Main Content -->
+<div class="main-content" id="mainContent">
+
+  <!-- Chat View -->
+  <div class="view active" id="viewChat">
+    <div class="chat-container" id="chatContainer">
+      <div class="welcome" id="welcome">
+        <div class="welcome-emoji">🕯️</div>
+        <div class="welcome-title">这里很安全</div>
+        <div class="welcome-sub">想说什么都可以<br>我会记住你说过的每一句话</div>
+        <div class="topic-cards" id="topicCards"></div>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="chatInput" rows="1" placeholder="说点什么吧..." autocomplete="off"></textarea>
+        <button class="send-btn" id="sendBtn" aria-label="发送">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="chat-actions">
+        <button class="action-chip" id="chipDeep">🌙 深度思考</button>
+        <button class="action-chip" id="chipSummary">📝 生成总结</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insights View -->
+  <div class="view" id="viewInsights">
+    <div class="insights-view" id="insightsContent">
+      <div class="insights-header">
+        <h2>🔍 个性化洞察</h2>
+        <p>AI 从对话中发现的模式与思考</p>
+      </div>
+      <div class="insights-empty" id="insightsEmpty">
+        <div class="emoji">🔮</div>
+        <p style="font-size:15px;margin-bottom:8px">还没有生成洞察</p>
+        <p style="font-size:13px">多聊几次后，AI 会帮你发现<br>那些你自己可能都没注意到的模式</p>
+      </div>
+      <div id="insightsList"></div>
+      <button class="insight-generate-btn" id="btnGenerateInsight">✨ 生成新的洞察</button>
+    </div>
+  </div>
+
+  <!-- Explore View -->
+  <div class="view" id="viewExplore">
+    <div class="explore-view" id="exploreContent">
+      <div class="explore-header">
+        <h2>🌿 自我探索</h2>
+        <p>温和的引导、专业的方法、安全的练习</p>
+      </div>
+      <div id="exploreCards">
+        <div class="explore-card" data-explore="emotion">
+          <div class="explore-icon">🎭</div>
+          <div class="explore-title">情绪觉察练习</div>
+          <div class="explore-desc">学会命名、接纳和理解自己的情绪</div>
+        </div>
+        <div class="explore-card" data-explore="cognitive">
+          <div class="explore-icon">🧠</div>
+          <div class="explore-title">思维模式识别</div>
+          <div class="explore-desc">发现常见的认知偏差和思维习惯</div>
+        </div>
+        <div class="explore-card" data-explore="selfcomp">
+          <div class="explore-icon">🤲</div>
+          <div class="explore-title">自我关怀练习</div>
+          <div class="explore-desc">学习像对待朋友一样对待自己</div>
+        </div>
+        <div class="explore-card" data-explore="values">
+          <div class="explore-icon">🧭</div>
+          <div class="explore-title">价值观澄清</div>
+          <div class="explore-desc">找到对你真正重要的事情</div>
+        </div>
+        <div class="explore-card" data-explore="stress">
+          <div class="explore-icon">🌊</div>
+          <div class="explore-title">压力应对技巧</div>
+          <div class="explore-desc">实用的即时缓解和长期调节方法</div>
+        </div>
+        <div class="explore-card" data-explore="gratitude">
+          <div class="explore-icon">✨</div>
+          <div class="explore-title">感恩与积极关注</div>
+          <div class="explore-desc">培养发现生活中美好事物的能力</div>
+        </div>
+      </div>
+      <div id="exploreDetail" class="hidden"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Tab Bar -->
+<nav class="tab-bar" id="tabBar">
+  <button class="tab-item active" data-tab="chat">
+    <span class="tab-icon">💬</span><span class="tab-label">对话</span>
+  </button>
+  <button class="tab-item" data-tab="insights">
+    <span class="tab-icon">🔍</span><span class="tab-label">洞察</span>
+  </button>
+  <button class="tab-item" data-tab="explore">
+    <span class="tab-icon">🌿</span><span class="tab-label">探索</span>
+  </button>
+</nav>
+
+<!-- Sessions Modal -->
+<div class="overlay hidden" id="overlaySessions">
+  <div class="modal">
+    <h3>💬 对话记录</h3>
+    <div id="sessionList"></div>
+    <button class="modal-close" id="btnNewSession">+ 开始新对话</button>
+    <button class="modal-close" id="btnCloseSessions" style="margin-top:8px;background:var(--border);border:none">关闭</button>
+  </div>
+</div>
+
+<!-- Menu Modal -->
+<div class="overlay hidden" id="overlayMenu">
+  <div class="modal">
+    <h3>⚙️ 设置</h3>
+    <div class="modal-item" id="menuViewProfile"><span>📋 查看我的档案</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuSetApiKey"><span>🔑 设置 API Key</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuExport"><span>📥 导出所有数据</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuClearData"><span>🗑️ 清除所有数据</span><span class="right" style="color:var(--danger)">⚠</span></div>
+    <button class="modal-close" id="btnCloseMenu" style="margin-top:8px;background:var(--border);border:none">关闭</button>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div class="overlay hidden" id="overlayProfile">
+  <div class="modal">
+    <h3>📋 关于你的档案</h3>
+    <div id="profileContent" style="margin-bottom:16px"></div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px">AI根据对话自动记录。只有你能看到，数据存储在本地。</p>
+    <button class="modal-close" id="btnCloseProfile" style="background:var(--border);border:none">关闭</button>
+  </div>
+</div>
+
+<!-- Setup overlay (first visit) -->
+<div class="overlay" id="overlaySetup">
+  <div class="modal" style="border-radius:var(--radius-lg);text-align:center;padding:32px 20px 24px">
+    <div style="font-size:48px;margin-bottom:12px">🕯️</div>
+    <h3 style="margin-bottom:6px">欢迎来到心语</h3>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">
+      请输入你的 DeepSeek API Key 开始使用<br>
+      <span style="font-size:11px;color:var(--text-muted)">Key 只存在你的手机里，不会上传</span>
+    </p>
+    <input type="password" id="setupKeyInput" placeholder="sk-…"
+      style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+      background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:6px">
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">
+      <a href="https://platform.deepseek.com/api_keys" target="_blank" style="color:var(--accent)">获取 API Key →</a>
+    </p>
+    <div id="setupProxyToggle" style="margin-bottom:14px;text-align:left">
+      <details style="font-size:12px;color:var(--text-muted)">
+        <summary style="cursor:pointer;margin-bottom:8px">⚡ 高级：API 代理设置（解决跨域问题）</summary>
+        <input type="text" id="setupProxyInput" placeholder="代理地址，如 https://your-worker.workers.dev"
+          style="width:100%;padding:8px 12px;border-radius:10px;border:1px solid var(--border);
+          background:var(--input-bg);color:var(--text);font-size:12px;font-family:var(--font);outline:none">
+        <p style="margin-top:6px;font-size:10px">如果直接调用失败，可部署 Cloudflare Worker 代理（见部署指南）</p>
+      </details>
+    </div>
+    <button id="btnSetupConfirm"
+      style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;
+      font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition)">
+      开始使用
+    </button>
+    <p id="setupError" style="font-size:12px;color:var(--danger);margin-top:10px;display:none"></p>
+  </div>
+</div>
+
+<!-- Share/Feedback toast container -->
+<div id="toastContainer"></div>
+
+<script>
+/* ================================================================
+   心语 v2 · 私人AI伴侣
+   三层记忆 | 话题卡片 | 个性化洞察 | 自我探索 | 完全本地
+   ================================================================ */
+
+// ── 配置 ──────────────────────────────────────────────────────
+const C = {
+  get apiKey() { return localStorage.getItem('xy_key') || ''; },
+  set apiKey(v) { localStorage.setItem('xy_key', v); },
+  get proxyURL() { return localStorage.getItem('xy_proxy') || ''; },
+  set proxyURL(v) { localStorage.setItem('xy_proxy', v); },
+  baseURL: 'https://api.deepseek.com/v1/chat/completions',
+  flash: 'deepseek-v4-flash',
+  pro: 'deepseek-v4-pro',
+  workMsgs: 15, compressThreshold: 30,
+  dbName: 'PrivateAI_v2', dbVersion: 1
+};
+
+// ── 系统提示词 ────────────────────────────────────────────────
+function sysPrompt(profile, sessionSummary) {
+  let pb = '';
+  if (profile && (profile.facts?.length || profile.themes?.length || profile.events?.length)) {
+    pb = '\n\n──── 关于你（长期记忆）────';
+    if (profile.facts?.length) pb += '\n• 已知：' + profile.facts.join('；');
+    if (profile.themes?.length) pb += '\n• 主题：' + profile.themes.join('、');
+    if (profile.events?.length) pb += '\n• 事件：' + profile.events.join('；');
+    pb += '\n──────────────────────────';
+  }
+  let sb = '';
+  if (sessionSummary) sb = '\n\n──── 本次对话背景 ────\n' + sessionSummary + '\n──────────────────────';
+
+  return `你是「心语」，一个专注于心理自助和自我探索的私人AI伴侣。
+
+核心定位：你不是回答问题或完成任务的工具。你提供一个温暖、安全、完全私密的空间，让用户自由探索内心世界。
+
+核心原则：
+1. 深度倾听——先共情再回应，理解话外之音
+2. 引导自我探索——用温和的提问帮用户发现自己的答案，不直接给建议
+3. 非评判——对用户的任何想法、情绪保持完全开放和接纳
+4. 真诚温暖——像深夜聊天的老朋友，自然不装腔
+5. 记住细节——留意个人信息、重要事件、反复出现的模式
+6. 保持连贯——如果和之前聊过的内容相关，自然提及
+
+重要边界：
+• 你不是治疗师，不诊断，不替代专业咨询
+• 察觉用户可能有自伤倾向时，温和表达关心，建议寻求专业帮助
+• 回复长度适中，一般3-8句话
+
+对话风格：像朋友间的深夜聊天——温暖不轻浮，真诚不沉重。适时用一个表情符号让氛围更柔和。用提问引导思考而非用答案填满空间。${pb}${sb}`;
+}
+
+// ── IndexedDB 封装 ────────────────────────────────────────────
+const DB = {
+  async open() {
+    return new Promise((ok, no) => {
+      const r = indexedDB.open(C.dbName, C.dbVersion);
+      r.onupgradeneeded = e => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('msgs')) {
+          const s = d.createObjectStore('msgs', { keyPath: 'id', autoIncrement: true });
+          s.createIndex('sid', 'sid', { unique: false });
+          s.createIndex('compressed', 'compressed', { unique: false });
+          s.createIndex('ts', 'ts', { unique: false });
+        }
+        if (!d.objectStoreNames.contains('profile')) d.createObjectStore('profile', { keyPath: 'key' });
+        if (!d.objectStoreNames.contains('smeta')) d.createObjectStore('smeta', { keyPath: 'sid' });
+        if (!d.objectStoreNames.contains('insights')) {
+          const si = d.createObjectStore('insights', { keyPath: 'id', autoIncrement: true });
+          si.createIndex('ts', 'ts', { unique: false });
+        }
+      };
+      r.onsuccess = () => ok(r.result);
+      r.onerror = () => no(r.error);
+    });
+  },
+  all(db, store) { return new Promise((ok, no) => { const r = db.transaction([store],'readonly').objectStore(store).getAll(); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }); },
+  get(db, store, key) { return new Promise((ok, no) => { const r = db.transaction([store],'readonly').objectStore(store).get(key); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }); },
+  byIdx(db, store, idx, val) { return new Promise((ok, no) => { const r = db.transaction([store],'readonly').objectStore(store).index(idx).getAll(val); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }); },
+  put(db, store, val) { return new Promise((ok, no) => { const r = db.transaction([store],'readwrite').objectStore(store).put(val); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }); },
+  del(db, store, key) { return new Promise((ok, no) => { const r = db.transaction([store],'readwrite').objectStore(store).delete(key); r.onsuccess=()=>ok(); r.onerror=()=>no(r.error); }); },
+  clear(db, store) { return new Promise((ok, no) => { const r = db.transaction([store],'readwrite').objectStore(store).clear(); r.onsuccess=()=>ok(); r.onerror=()=>no(r.error); }); },
+  async delByIdx(db, store, idx, val) {
+    const t = db.transaction([store],'readwrite'); const s = t.objectStore(store);
+    const keys = await new Promise((ok,no)=>{const r=s.index(idx).getAllKeys(val);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);});
+    for(const k of keys) await new Promise((res,rej)=>{const r=s.delete(k);r.onsuccess=res;r.onerror=rej;});
+    return new Promise(res=>{t.oncomplete=res;});
+  }
+};
+
+// ── 记忆管理器 ────────────────────────────────────────────────
+class Memory {
+  constructor(db) { this.db = db; }
+  async profile() { const d = await DB.get(this.db, 'profile', 'user_profile'); return d?.value || { facts:[], themes:[], events:[], lastUpdated:null }; }
+  async updProfile(upd) {
+    const p = await this.profile(); const now = Date.now();
+    for(const k of ['facts','themes','events']) if(upd[k]) for(const v of upd[k]) if(!p[k].includes(v)) p[k].push(v);
+    if(p.facts.length>40) p.facts=p.facts.slice(-30);
+    if(p.themes.length>15) p.themes=p.themes.slice(-12);
+    if(p.events.length>20) p.events=p.events.slice(-15);
+    p.lastUpdated=now; await DB.put(this.db, 'profile', { key:'user_profile', value:p }); return p;
+  }
+  async sessSummary(sid) { const m = await DB.get(this.db, 'smeta', sid); return m?.summary || ''; }
+  async updSessSummary(sid, summary) {
+    const m = await DB.get(this.db, 'smeta', sid) || { sid };
+    m.summary=summary; m.lastActive=Date.now(); await DB.put(this.db, 'smeta', m);
+  }
+  async activeMsgs(sid) { const ms = await DB.byIdx(this.db, 'msgs', 'sid', sid); return ms.filter(m=>!m.compressed).sort((a,b)=>a.ts-b.ts); }
+  async allMsgs(sid) { const ms = await DB.byIdx(this.db, 'msgs', 'sid', sid); return ms.sort((a,b)=>a.ts-b.ts); }
+  async allSessMeta() { const a = await DB.all(this.db, 'smeta'); return a.sort((a,b)=>(b.lastActive||0)-(a.lastActive||0)); }
+  async sessTitle(sid) { const ms = await this.allMsgs(sid); const fu = ms.find(m=>m.role==='user'); return fu ? (fu.content.slice(0,30)+(fu.content.length>30?'…':'')) : '空对话'; }
+
+  async compress(sid) {
+    const ms = await this.activeMsgs(sid); if(ms.length<=C.compressThreshold) return false;
+    const toC = ms.slice(0, ms.length-C.workMsgs);
+    const prompt = `分析对话片段并提取关键信息。\n\n${toC.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}\n\n请返回严格JSON（不要markdown）：{"summary":"2-4句中文摘要","new_facts":[],"new_themes":[],"new_events":[]}`;
+    try {
+      const result = await this._apiCall(prompt, true);
+      let p; try { p=JSON.parse(result.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim()); } catch(e) { return false; }
+      const es = await this.sessSummary(sid);
+      await this.updSessSummary(sid, es ? `${es}\n\n📎 更早：${p.summary}` : p.summary);
+      await this.updProfile({ facts:p.new_facts||[], themes:p.new_themes||[], events:p.new_events||[] });
+      for(const m of toC) { m.compressed=true; await DB.put(this.db, 'msgs', m); }
+      console.log(`压缩完成: ${toC.length}条`); return true;
+    } catch(e) { console.error('压缩失败',e); return false; }
+  }
+
+  async genSummary(sid) {
+    const ms = await this.allMsgs(sid); if(ms.length<2) return null;
+    const prompt = `为以下对话生成温暖有洞察力的总结（2-4句话，直接输出文字）：\n\n${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}\n\n从以下角度：主要话题、情绪走向、用户在意的事、值得继续关注的方向。`;
+    try { const r = await this._apiCall(prompt, true); const s = r.trim(); await this.updSessSummary(sid, s); return s; } catch(e) { return null; }
+  }
+
+  async genTopics(sid) {
+    const ms = await this.allMsgs(sid);
+    if(ms.length<2) return this._defaultTopics();
+    const prompt = `基于用户的对话，生成3个可以开启新对话的话题建议。\n\n${ms.slice(-10).map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}\n\n返回严格JSON：[{"emoji":"😊","title":"简短标题","desc":"一句话描述，邀请用户探索"}]\n话题应该自然、温和、有开放性。不要过于私密或冒犯。`;
+    try { const r = await this._apiCall(prompt, false); const p=JSON.parse(r.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim()); return p.slice(0,4); } catch(e) { return this._defaultTopics(); }
+  }
+
+  _defaultTopics() {
+    return [
+      {emoji:'💭',title:'今天脑海里出现最多的是什么？',desc:'随便聊聊那些反复出现的念头'},
+      {emoji:'🎭',title:'最近有什么让你情绪波动的事？',desc:'不管是好的还是不好的'},
+      {emoji:'🌙',title:'睡前脑子里在想什么？',desc:'那些安静时刻浮现的想法往往很重要'},
+      {emoji:'🌟',title:'最近有哪个瞬间让你感到"对了"？',desc:'小小的满足感也值得被记住'}
+    ];
+  }
+
+  async genInsight() {
+    const allSessMeta = await this.allSessMeta();
+    const valid = allSessMeta.filter(m=>m.sid!=='current');
+    if(valid.length===0) return null;
+    const allMsgs = await DB.all(this.db, 'msgs');
+    if(allMsgs.length<6) return null;
+
+    const profile = await this.profile();
+    const recentMsgs = allMsgs.sort((a,b)=>b.ts-a.ts).slice(0, 60).reverse();
+    const prompt = `你是一位温和而敏锐的心理观察者。请分析以下用户的对话记录，生成个性化洞察。
+
+用户档案：${profile.facts?.join('；') || '暂无'}
+对话片段：${recentMsgs.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
+
+请从以下角度分析，返回严格JSON：
+{
+  "patterns": [{"title":"发现的模式","body":"具体描述"}],
+  "strengths": [{"title":"用户展现的优势","body":"具体描述"}],
+  "growth": [{"title":"注意到的成长变化","body":"具体描述"}],
+  "suggestion": "一段温暖的建议或引导方向（3-5句话）",
+  "overall": "一段整体的观察（2-3句话）"
+}
+
+基于真实对话内容，不要编造。如果某个角度没有足够信息，返回空数组。语气温暖、共情、不评判。`;
+
+    try {
+      const r = await this._apiCall(prompt, true, 4096);
+      const p = JSON.parse(r.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim());
+      const insight = { ts: Date.now(), data: p };
+      await DB.put(this.db, 'insights', insight);
+      return insight;
+    } catch(e) { console.error('洞察生成失败',e); return null; }
+  }
+
+  async getInsights() {
+    const all = await DB.all(this.db, 'insights');
+    return all.sort((a,b)=>b.ts-a.ts);
+  }
+
+  async _apiCall(prompt, deep=false, maxT=2048) {
+    const apiUrl = C.proxyURL || C.baseURL;
+    const resp = await fetch(apiUrl, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${C.apiKey}`},
+      body:JSON.stringify({
+        model:deep?C.pro:C.flash,
+        messages:[{role:'system',content:'你是一个专业的分析助手。严格返回JSON或要求的格式。'},{role:'user',content:prompt}],
+        thinking:deep?{type:'enabled'}:undefined,
+        reasoning_effort:deep?'medium':undefined,
+        temperature:0.3, max_tokens:maxT, stream:false
+      })
+    });
+    if(!resp.ok) throw new Error(`API ${resp.status}`);
+    const d = await resp.json();
+    return d.choices[0].message.content;
+  }
+}
+
+// ── API 流式调用 ──────────────────────────────────────────────
+class API {
+  constructor(memory) { this.memory=memory; this.ctrl=null; }
+  abort() { if(this.ctrl){this.ctrl.abort();this.ctrl=null;} }
+  async *stream(sid, msg, deep=false) {
+    this.ctrl = new AbortController();
+    const profile = await this.memory.profile();
+    const summary = await this.memory.sessSummary(sid);
+    const active = await this.memory.activeMsgs(sid);
+    const working = active.slice(-C.workMsgs);
+    const messages = [
+      {role:'system',content:sysPrompt(profile,summary)},
+      ...working.map(m=>({role:m.role,content:m.content})),
+      {role:'user',content:msg}
+    ];
+    const payload = { model:deep?C.pro:C.flash, messages, stream:true, temperature:deep?0.9:1.0, max_tokens:deep?4096:2048 };
+    if(deep) { payload.thinking={type:'enabled'}; payload.reasoning_effort='medium'; }
+
+    const apiUrl = C.proxyURL || C.baseURL;
+    let resp;
+    try {
+      resp = await fetch(apiUrl, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${C.apiKey}`},
+        body:JSON.stringify(payload), signal:this.ctrl.signal
+      });
+    } catch(e) {
+      if(e.name==='AbortError') throw e;
+      if(e.message?.includes('Failed to fetch')||e.name==='TypeError')
+        throw new Error('CORS_OR_NETWORK');
+      throw e;
+    }
+    if(!resp.ok) { throw new Error(`HTTP_${resp.status}`); }
+
+    const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buf='';
+    while(true) {
+      const {done,value}=await reader.read(); if(done) break;
+      buf+=decoder.decode(value,{stream:true}); const lines=buf.split('\n'); buf=lines.pop()||'';
+      for(const l of lines) {
+        if(!l.startsWith('data: ')) continue; const d=l.slice(6).trim(); if(d==='[DONE]') return;
+        try {
+          const p=JSON.parse(d); const dl=p.choices?.[0]?.delta; if(!dl) continue;
+          if(dl.reasoning_content) yield {t:'thinking',c:dl.reasoning_content};
+          if(dl.content) yield {t:'content',c:dl.content};
+        } catch(e) {}
+      }
+    }
+  }
+}
+
+// ── 探索内容数据 ──────────────────────────────────────────────
+const EXPLORE = {
+  emotion: {
+    title:'🎭 情绪觉察练习', desc:'学会命名、接纳和理解自己的情绪',
+    sections: [
+      {title:'为什么重要',body:'情绪是内心的信使。当我们能够准确地识别和命名情绪时，就能更好地理解自己的需求，而不是被情绪所控制。'},
+      {title:'情绪命名练习',body:'下次当你感到"不舒服"时，试着更具体地命名：是失望？委屈？焦虑？无力？还是别的什么？越具体，你就越接近情绪的源头。拿起手机或纸笔，写下3个可能的情绪词语。'},
+      {title:'身体扫描',body:'情绪往往先在身体上表现出来。闭上眼睛，从头到脚慢慢扫描：肩膀是否紧绷？胃是否不舒服？心跳是否加速？这些身体信号往往比大脑更早知道你的情绪状态。'},
+      {title:'RAIN技巧',body:'这是一个常用的情绪觉察方法：\n• R-识别（Recognize）：注意到情绪的存在\n• A-允许（Allow）：允许情绪在这里，不推开它\n• I-探究（Investigate）：温柔地问自己，这个情绪想告诉我什么\n• N-不认同（Non-identify）：我不是我的情绪，我只是在体验它'},
+    ]
+  },
+  cognitive: {
+    title:'🧠 思维模式识别', desc:'发现常见的认知偏差和思维习惯',
+    sections: [
+      {title:'常见的思维陷阱',body:'• 非黑即白：事情要么完美要么糟糕\n• 过度概括：从一件事推断"我总是…"\n• 灾难化：假设最坏的结果会发生\n• 读心术：以为自己知道别人在想什么\n• 应该思维：认为自己"应该"如何如何'},
+      {title:'思维记录练习',body:'当你注意到一个负面想法时，试着写下：\n1. 具体情境（什么时候、在哪里）\n2. 当时的想法（具体是什么念头）\n3. 情绪反应（感受和身体反应）\n4. 换个角度看（还有其他可能的解释吗？）\n5. 结果（写完后的感受变化）'},
+      {title:'与自己的想法对话',body:'把你的想法想象成一个关心你但有时过度紧张的朋友。你可以对它说："谢谢你的提醒，我听到了。但事情可能没有你想的那么糟。"这比试图消灭这个想法更有效。'},
+    ]
+  },
+  selfcomp: {
+    title:'🤲 自我关怀练习', desc:'学习像对待朋友一样对待自己',
+    sections: [
+      {title:'自我关怀的三个要素',body:'• 自我友善：对自己温柔而非苛刻\n• 共同人性：理解困难和痛苦是人类共有的体验\n• 正念觉察：客观地观察自己的感受，不过度沉浸'},
+      {title:'写一封给自己的信',body:'想象你最好的朋友正在经历你所面临的困难。你会对ta说什么？现在，把那些话写给自己。用同样温暖、理解、支持的语气。即使一开始觉得别扭，也试着写完。'},
+      {title:'自我关怀短语',body:'找一个安静的时刻，把手放在心口，对自己轻声说：\n"此刻我很不容易，我承认这一点。\n痛苦是生活的一部分，我并不孤单。\n愿我对自己温柔一些。\n愿我给自己所需要的耐心。"'},
+      {title:'日常小练习',body:'每天睡前，问自己：今天我做对了什么？即使是小到"按时喝了水"或"对陌生人微笑了"。把这变成睡前仪式，训练大脑关注积极和善意。'},
+    ]
+  },
+  values: {
+    title:'🧭 价值观澄清', desc:'找到对你真正重要的事情',
+    sections: [
+      {title:'为什么价值观重要',body:'价值观是人生的指南针。当我们按照自己的价值观生活时，会感到更充实、更有方向。而当我们偏离价值观时，往往会感到迷茫和不安。'},
+      {title:'探索练习',body:'拿出一张纸或打开备忘录，回答这些问题：\n• 你最钦佩的人是谁？他们身上哪些品质打动你？\n• 如果金钱和别人的眼光都不是问题，你会如何度过每一天？\n• 回顾一次你感到"这很对"的时刻——那时你在做什么？'},
+      {title:'价值观排序',body:'从以下词汇中选出最重要的5个：\n真诚、自由、连接、成长、安全、创造、公正、冒险、平和、贡献、独立、爱、智慧、健康、勇气、美。排出顺序。然后问自己：我的生活安排反映了这个顺序吗？'},
+    ]
+  },
+  stress: {
+    title:'🌊 压力应对技巧', desc:'实用的即时缓解和长期调节方法',
+    sections: [
+      {title:'即时缓解（5分钟以内）',body:'• 478呼吸法：吸气4秒→屏息7秒→呼气8秒，重复3-5次\n• 冷水刺激：用冷水冲手腕或洗脸，激活迷走神经\n• 5-4-3-2-1接地：说出5个看到的、4个摸到的、3个听到的、2个闻到的、1个尝到的\n• 用力握拳10秒然后松开，感受放松的对比'},
+      {title:'日常调节',body:'• 规律运动：哪怕每天15分钟的散步\n• 睡眠优先：保持固定的睡眠和起床时间\n• 社交连接：每天至少和一个让你放松的人说几句话\n• 边界设定：学会说"不"，保护自己的时间和能量'},
+      {title:'长期建设',body:'• 培养一个不需要产出的爱好（画画、弹琴、种花）\n• 学习正念冥想（每天5分钟开始）\n• 建立"我能控制/我不能控制"清单\n• 定期做"信息断食"——暂时远离社交媒体和新闻'},
+    ]
+  },
+  gratitude: {
+    title:'✨ 感恩与积极关注', desc:'培养发现生活中美好事物的能力',
+    sections: [
+      {title:'感恩的科学',body:'研究表明，定期练习感恩可以显著提升幸福感、改善睡眠质量、增强心理韧性。这不是盲目乐观，而是训练大脑注意那些容易忽略的美好瞬间。'},
+      {title:'三件好事练习',body:'每天晚上睡前，写下今天发生的三件好事。不论大小——可能是"阳光透过树叶很好看"，可能是"同事分享了一块饼干"，也可能是"解决了一个难题"。坚持一周，注意自己的感受变化。'},
+      {title:'感恩信',body:'想一个对你产生过积极影响的人，写一封简短的感恩信。不一定要真的发出去——写的过程本身就是一种疗愈。表达你的感谢和具体的影响。'},
+      {title:'平凡的奇迹',body:'选一个日常时刻——刷牙、等红灯、排队——用这个片刻练习留意周围。牙齿的触感、阳光的颜色、周围的声音。每一个平凡的时刻都包含着可以感恩的细节。'},
+    ]
+  }
+};
+
+// ── UI 管理器 ──────────────────────────────────────────────────
+class UI {
+  constructor() {
+    this.cc = document.getElementById('chatContainer');
+    this.welcome = document.getElementById('welcome');
+    this.topicCards = document.getElementById('topicCards');
+    this.input = document.getElementById('chatInput');
+    this.sendBtn = document.getElementById('sendBtn');
+    this.chipDeep = document.getElementById('chipDeep');
+    this.chipSummary = document.getElementById('chipSummary');
+    this.navTitle = document.getElementById('navTitle');
+    this.deepMode = false;
+    this.thinkingEl = null;
+    this.curBubble = null;
+    this.curContent = '';
+  }
+
+  // View switching
+  switchTab(tab) {
+    ['viewChat','viewInsights','viewExplore'].forEach(id => document.getElementById(id).classList.remove('active'));
+    document.getElementById(`view${tab.charAt(0).toUpperCase()+tab.slice(1)}`).classList.add('active');
+    document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
+    document.querySelector(`.tab-item[data-tab="${tab}"]`).classList.add('active');
+    const titles = {chat:'心 语',insights:'个性化洞察',explore:'自我探索'};
+    this.navTitle.textContent = titles[tab] || '心 语';
+    this.cc.scrollTop = this.cc.scrollHeight;
+  }
+
+  // Chat
+  hideWelcome() { if(this.welcome&&!this.welcome.classList.contains('hidden')) this.welcome.classList.add('hidden'); }
+  showWelcome() { if(this.welcome&&this.welcome.classList.contains('hidden')) this.welcome.classList.remove('hidden'); }
+  welcomeVisible() { return this.welcome && !this.welcome.classList.contains('hidden'); }
+
+  addUserMsg(text, ts=null) {
+    this.hideWelcome();
+    const d=document.createElement('div'); d.className='message user';
+    d.innerHTML=`<div class="bubble">${this.esc(text)}</div><div class="message-meta">${ts?this.fmtTime(ts):this.now()}</div>`;
+    this.cc.appendChild(d); this.scroll(true);
+  }
+
+  addAssistantMsg(text, ts=null) {
+    this.hideWelcome();
+    const d=document.createElement('div'); d.className='message assistant';
+    d.innerHTML=`<div class="bubble">${this.esc(text)}</div><div class="message-meta">${ts?this.fmtTime(ts):this.now()}</div>`;
+    this.cc.appendChild(d);
+  }
+
+  createAssistantPlaceholder() {
+    this.hideWelcome();
+    const d=document.createElement('div'); d.className='message assistant';
+    const b=document.createElement('div'); b.className='bubble'; b.textContent='';
+    const m=document.createElement('div'); m.className='message-meta'; m.textContent='';
+    d.appendChild(b); d.appendChild(m);
+    this.cc.appendChild(d);
+    this.curBubble=b; this.curContent=''; this.scroll(true);
+  }
+
+  appendAssistant(text) {
+    if(!this.curBubble) this.createAssistantPlaceholder();
+    this.curContent+=text;
+    this.curBubble.textContent=this.curContent;
+    this.scroll(false);
+  }
+
+  finishAssistant() {
+    this.hideThinking();
+    if(this.curBubble) {
+      const m=this.curBubble.parentElement.querySelector('.message-meta'); if(m) m.textContent=this.now();
+    }
+    this.curBubble=null; this.curContent='';
+  }
+
+  showThinking() {
+    if(this.thinkingEl) return;
+    this.thinkingEl=document.createElement('div'); this.thinkingEl.className='thinking-indicator';
+    this.thinkingEl.innerHTML='<span>正在深度思考</span><span class="dots"><span></span><span></span><span></span></span>';
+    this.cc.appendChild(this.thinkingEl); this.scroll(false);
+  }
+  hideThinking() { if(this.thinkingEl){this.thinkingEl.remove();this.thinkingEl=null;} }
+
+  addSystemMsg(html) {
+    const d=document.createElement('div'); d.className='message system';
+    d.innerHTML=`<div class="bubble">${html}</div>`; this.cc.appendChild(d); this.scroll(true);
+  }
+
+  addSummaryCard(text) {
+    const d=document.createElement('div'); d.className='summary-card';
+    d.innerHTML=`<h4>📝 对话总结</h4><p>${this.esc(text)}</p>`;
+    this.cc.appendChild(d); this.scroll(true);
+  }
+
+  clearChat() { this.cc.innerHTML=''; this.showWelcome(); }
+
+  setDeepMode(v) {
+    this.deepMode=v;
+    this.chipDeep.classList.toggle('active',v);
+    this.chipDeep.innerHTML=v?'🌙 深度思考中':'🌙 深度思考';
+  }
+
+  setLoading(v) {
+    this.sendBtn.disabled=v; this.input.disabled=v;
+    if(v) this.sendBtn.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" style="animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="40 60"/></svg>';
+    else this.sendBtn.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20"><path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  // Topics
+  async renderTopics(memory, sid) {
+    this.topicCards.innerHTML='<div class="topic-loading">✨ 准备话题中…</div>';
+    try {
+      const topics = await memory.genTopics(sid);
+      this.topicCards.innerHTML = topics.map((t,i) => `
+        <div class="topic-card" data-topic="${i}" style="animation-delay:${i*0.1}s;animation:fadeInUp 0.4s ease both">
+          <span class="topic-card-emoji">${t.emoji}</span>
+          <div class="topic-card-body">
+            <div class="topic-card-title">${this.esc(t.title)}</div>
+            <div class="topic-card-desc">${this.esc(t.desc)}</div>
+          </div>
+          <span class="topic-card-arrow">→</span>
+        </div>
+      `).join('');
+    } catch(e) {
+      this.topicCards.innerHTML='<div class="topic-loading">准备话题中…</div>';
+    }
+  }
+
+  // Insights
+  renderInsights(insights, emptyEl, listEl) {
+    if(!insights||insights.length===0) { emptyEl.classList.remove('hidden'); listEl.innerHTML=''; return; }
+    emptyEl.classList.add('hidden');
+    listEl.innerHTML = insights.map(ins => {
+      const d=ins.data;
+      let html=`<div class="insight-card" style="animation:fadeInUp 0.5s ease">`;
+      if(d.overall) html+=`<div class="insight-body" style="font-style:italic;margin-bottom:12px">${this.esc(d.overall)}</div>`;
+      if(d.patterns?.length) html+=`<div class="insight-icon">🧩</div><div class="insight-label">发现的模式</div>`+d.patterns.map(p=>`<div class="insight-title">${this.esc(p.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(p.body)}</div>`).join('');
+      if(d.strengths?.length) html+=`<div class="insight-icon">💪</div><div class="insight-label">你的优势</div>`+d.strengths.map(s=>`<div class="insight-title">${this.esc(s.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(s.body)}</div>`).join('');
+      if(d.growth?.length) html+=`<div class="insight-icon">🌱</div><div class="insight-label">成长变化</div>`+d.growth.map(g=>`<div class="insight-title">${this.esc(g.title)}</div><div class="insight-body" style="margin-bottom:12px">${this.esc(g.body)}</div>`).join('');
+      if(d.suggestion) html+=`<div class="insight-icon">💡</div><div class="insight-label">温柔的提醒</div><div class="insight-body" style="font-style:italic">${this.esc(d.suggestion)}</div>`;
+      html+=`<div class="insight-date">${new Date(ins.ts).toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>`;
+      html+=`</div>`;
+      return html;
+    }).join('');
+  }
+
+  // Explore
+  showExploreDetail(key) {
+    const d=EXPLORE[key]; if(!d) return;
+    document.getElementById('exploreCards').classList.add('hidden');
+    const det=document.getElementById('exploreDetail');
+    det.classList.remove('hidden');
+    det.innerHTML=`
+      <button class="explore-back-btn" id="btnExploreBack">← 返回</button>
+      <div class="explore-detail" style="margin-top:16px">
+        <h3>${d.title}</h3>
+        <p style="color:var(--text-secondary);margin-bottom:16px">${d.desc}</p>
+        ${d.sections.map(s=>`<div class="section"><h4>${s.title}</h4><p>${s.body.replace(/\n/g,'<br>')}</p></div>`).join('')}
+      </div>`;
+    document.getElementById('btnExploreBack').addEventListener('click',()=>{
+      document.getElementById('exploreCards').classList.remove('hidden');
+      det.classList.add('hidden');
+    });
+  }
+
+  scroll(force) {
+    requestAnimationFrame(()=>{
+      if(!force){const d=this.cc.scrollHeight-this.cc.scrollTop-this.cc.clientHeight;if(d>120)return;}
+      this.cc.scrollTop=this.cc.scrollHeight;
+    });
+  }
+
+  esc(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+  now() { const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+  fmtTime(ts) { const d=new Date(ts); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+
+  toast(msg) {
+    const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+    document.getElementById('toastContainer').appendChild(t);
+    setTimeout(()=>t.remove(),2500);
+  }
+}
+
+// ── 模态框 ────────────────────────────────────────────────────
+class Modal {
+  constructor() { this.ovs={sessions:document.getElementById('overlaySessions'),menu:document.getElementById('overlayMenu'),profile:document.getElementById('overlayProfile')}; }
+  open(n) { Object.entries(this.ovs).forEach(([k,v])=>v.classList.toggle('hidden',k!==n)); }
+  closeAll() { Object.values(this.ovs).forEach(v=>v.classList.add('hidden')); }
+}
+
+// ── 主应用 ────────────────────────────────────────────────────
+class App {
+  constructor() {
+    this.db=null; this.memory=null; this.api=null;
+    this.ui=new UI(); this.modal=new Modal();
+    this.sid=null; this.generating=false;
+  }
+
+  async init() {
+    // 检查 API Key
+    if (!C.apiKey) {
+      this._showSetup();
+      return;
+    }
+
+    this.db = await DB.open();
+    this.memory = new Memory(this.db);
+    this.api = new API(this.memory);
+
+    let cur = await DB.get(this.db, 'smeta', 'current');
+    if(!cur) {
+      this.sid = this._genId();
+      await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
+      await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
+    } else {
+      this.sid = cur.currentSid;
+    }
+
+    const ms = await this.memory.allMsgs(this.sid);
+    if(ms.length===0) {
+      this.ui.showWelcome();
+      this.ui.renderTopics(this.memory, this.sid);
+    } else {
+      this.ui.hideWelcome();
+      for(const m of ms) {
+        if(m.role==='user') this.ui.addUserMsg(m.content, m.ts);
+        else if(m.role==='assistant') this.ui.addAssistantMsg(m.content, m.ts);
+      }
+    }
+
+    this._bindEvents();
+    this._setupInputResize();
+    this._setupViewport();
+    this._backgroundCompress();
+
+    // 加载洞察
+    const insights = await this.memory.getInsights();
+    this.ui.renderInsights(insights, document.getElementById('insightsEmpty'), document.getElementById('insightsList'));
+  }
+
+  _bindEvents() {
+    this.ui.sendBtn.addEventListener('click', ()=>this._send());
+    this.ui.input.addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this._send();} });
+
+    this.ui.chipDeep.addEventListener('click', ()=>this.ui.setDeepMode(!this.ui.deepMode));
+    this.ui.chipSummary.addEventListener('click', ()=>this._genSummary());
+
+    // Tab switching
+    document.querySelectorAll('.tab-item').forEach(b=>b.addEventListener('click',()=>{
+      this.ui.switchTab(b.dataset.tab);
+      if(b.dataset.tab==='insights') {
+        this.memory.getInsights().then(ins=>this.ui.renderInsights(ins,document.getElementById('insightsEmpty'),document.getElementById('insightsList')));
+      }
+    }));
+
+    // Explore cards
+    document.getElementById('exploreCards').addEventListener('click', e=>{
+      const card = e.target.closest('.explore-card');
+      if(card) this.ui.showExploreDetail(card.dataset.explore);
+    });
+
+    // Topic cards
+    this.ui.topicCards.addEventListener('click', e=>{
+      const card = e.target.closest('.topic-card');
+      if(card) {
+        const title = card.querySelector('.topic-card-title')?.textContent || '';
+        const desc = card.querySelector('.topic-card-desc')?.textContent || '';
+        this.ui.input.value = title;
+        this.ui.input.focus();
+        this.ui.input.style.height='auto'; this.ui.input.style.height=Math.min(this.ui.input.scrollHeight,120)+'px';
+        this.ui.switchTab('chat');
+      }
+    });
+
+    // Generate insight
+    document.getElementById('btnGenerateInsight').addEventListener('click', ()=>this._genInsight());
+
+    // Sessions
+    document.getElementById('btnSessions').addEventListener('click',()=>this._openSessions());
+    document.getElementById('btnMenu').addEventListener('click',()=>this.modal.open('menu'));
+    document.getElementById('btnCloseSessions').addEventListener('click',()=>this.modal.closeAll());
+    document.getElementById('btnCloseMenu').addEventListener('click',()=>this.modal.closeAll());
+    document.getElementById('btnCloseProfile').addEventListener('click',()=>this.modal.closeAll());
+    document.getElementById('btnNewSession').addEventListener('click',()=>{this.modal.closeAll();this._newSession();});
+    document.getElementById('menuViewProfile').addEventListener('click',()=>this._viewProfile());
+    document.getElementById('menuSetApiKey').addEventListener('click',()=>this._setApiKey());
+    document.getElementById('menuExport').addEventListener('click',()=>this._export());
+    document.getElementById('menuClearData').addEventListener('click',()=>this._clearAll());
+
+    // Overlay close
+    Object.values(this.modal.ovs).forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)this.modal.closeAll();}));
+  }
+
+  _setupInputResize() {
+    this.ui.input.addEventListener('input',()=>{
+      this.ui.input.style.height='auto';
+      this.ui.input.style.height=Math.min(this.ui.input.scrollHeight,120)+'px';
+    });
+  }
+
+  _setupViewport() {
+    if(window.visualViewport) window.visualViewport.addEventListener('resize',()=>this.ui.scroll(false));
+    this.ui.input.addEventListener('focus',()=>setTimeout(()=>this.ui.scroll(true),300));
+  }
+
+  async _backgroundCompress() {
+    const cnt = (await DB.byIdx(this.db,'msgs','sid',this.sid)).filter(m=>!m.compressed).length;
+    if(cnt>C.compressThreshold) await this.memory.compress(this.sid);
+  }
+
+  async _send() {
+    const text = this.ui.input.value.trim(); if(!text) return;
+
+    if(this.generating) { this.api.abort(); this.ui.hideThinking(); this.ui.finishAssistant(); this.ui.setLoading(false); this.generating=false; await new Promise(r=>setTimeout(r,100)); }
+
+    this.generating=true;
+    this.ui.input.value=''; this.ui.input.style.height='auto';
+    this.ui.setLoading(true);
+
+    this.ui.addUserMsg(text);
+    await this._saveMsg('user', text);
+    this.ui.createAssistantPlaceholder();
+
+    let full='', thinkingShown=false;
+    try {
+      const stream = this.api.stream(this.sid, text, this.ui.deepMode);
+      for await(const c of stream) {
+        if(c.t==='thinking') { if(!thinkingShown&&this.ui.deepMode){this.ui.showThinking();thinkingShown=true;} }
+        else if(c.t==='content') { if(thinkingShown){this.ui.hideThinking();thinkingShown=false;} full+=c.c; this.ui.appendAssistant(c.c); }
+      }
+      this.ui.hideThinking(); this.ui.finishAssistant();
+      if(!full){ full='（我似乎在出神…能再说一遍吗？）'; this.ui.appendAssistant(full); this.ui.finishAssistant(); }
+      await this._saveMsg('assistant', full);
+      await this._backgroundCompress();
+
+      // 检查是否需要更新话题卡片
+      const ms = await this.memory.allMsgs(this.sid);
+      if(ms.length%10===0) this.ui.renderTopics(this.memory, this.sid);
+    } catch(e) {
+      this.ui.hideThinking();
+      if(e.name==='AbortError') { this.ui.appendAssistant('（已停止生成）'); }
+      else {
+        const m=e.message||String(e);
+        if(m.startsWith('CORS_OR_NETWORK')) { this.ui.appendAssistant('⚠️ 无法连接API。请确保通过HTTP服务器打开此页面（不要直接双击文件）。'); this.ui.toast('请通过HTTP服务器打开'); }
+        else if(m.includes('401')) { this.ui.appendAssistant('🔑 API Key无效。请在设置中更新。'); this.ui.toast('API Key无效'); }
+        else if(m.includes('429')) { this.ui.appendAssistant('⏳ 请求太频繁，请稍等。'); this.ui.toast('请求太频繁'); }
+        else { this.ui.appendAssistant('抱歉，出了点问题…请稍后再试。'); this.ui.toast('连接失败'); }
+      }
+      this.ui.finishAssistant();
+    }
+
+    this.ui.setLoading(false); this.generating=false; this.ui.input.focus();
+  }
+
+  async _saveMsg(role, content) {
+    const msg = { sid:this.sid, role, content, ts:Date.now(), compressed:false };
+    await DB.put(this.db, 'msgs', msg);
+    const meta = await DB.get(this.db, 'smeta', this.sid) || { sid:this.sid };
+    meta.lastActive=Date.now(); meta.msgCount=(meta.msgCount||0)+1;
+    if(!meta.createdAt) meta.createdAt=Date.now();
+    await DB.put(this.db, 'smeta', meta);
+  }
+
+  async _genSummary() {
+    if(this.generating) return; this.generating=true;
+    this.ui.toast('正在生成对话总结…');
+    const s = await this.memory.genSummary(this.sid);
+    if(s) { this.ui.addSummaryCard(s); this.ui.toast('总结已生成 ✨'); }
+    else this.ui.toast('还没有足够的对话内容');
+    this.generating=false;
+  }
+
+  async _genInsight() {
+    if(this.generating) return; this.generating=true;
+    this.ui.toast('正在生成个性化洞察…');
+    const btn = document.getElementById('btnGenerateInsight');
+    btn.disabled=true; btn.textContent='⏳ 分析中…';
+    const ins = await this.memory.genInsight();
+    if(ins) {
+      const insights = await this.memory.getInsights();
+      this.ui.renderInsights(insights, document.getElementById('insightsEmpty'), document.getElementById('insightsList'));
+      this.ui.toast('洞察已生成 ✨');
+    } else {
+      this.ui.toast('需要更多对话才能生成洞察');
+    }
+    btn.disabled=false; btn.textContent='✨ 生成新的洞察';
+    this.generating=false;
+  }
+
+  async _newSession() {
+    if(this.sid) {
+      const title = await this.memory.sessTitle(this.sid);
+      const meta = await DB.get(this.db, 'smeta', this.sid) || {};
+      meta.title=title; await DB.put(this.db, 'smeta', meta);
+    }
+    this.sid=this._genId();
+    await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
+    await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
+    this.ui.clearChat(); this.ui.showWelcome();
+    this.ui.renderTopics(this.memory, this.sid);
+    this.ui.switchTab('chat');
+    this.ui.toast('开始新的对话 ✨');
+  }
+
+  async _switchSession(newSid) {
+    if(newSid===this.sid){this.modal.closeAll();return;}
+    const oldTitle = await this.memory.sessTitle(this.sid);
+    const oldMeta = await DB.get(this.db, 'smeta', this.sid) || {};
+    oldMeta.title=oldTitle; await DB.put(this.db, 'smeta', oldMeta);
+
+    this.sid=newSid;
+    await DB.put(this.db, 'smeta', { sid:'current', currentSid:newSid });
+    this.ui.clearChat();
+    const ms = await this.memory.allMsgs(newSid);
+    if(ms.length>0) {
+      this.ui.hideWelcome();
+      for(const m of ms) {
+        if(m.role==='user') this.ui.addUserMsg(m.content, m.ts);
+        else if(m.role==='assistant') this.ui.addAssistantMsg(m.content, m.ts);
+      }
+    } else {
+      this.ui.showWelcome();
+      this.ui.renderTopics(this.memory, newSid);
+    }
+    this.modal.closeAll();
+    this.ui.switchTab('chat');
+    this.ui.toast('已切换对话');
+    this.ui.scroll(true);
+  }
+
+  async _deleteSession(sid) {
+    if(!confirm('确定删除这段对话？不可撤销。')) return;
+    await DB.delByIdx(this.db, 'msgs', 'sid', sid);
+    await DB.del(this.db, 'smeta', sid);
+    if(sid===this.sid) {
+      const all=(await this.memory.allSessMeta()).filter(m=>m.sid!=='current'&&m.sid!==sid);
+      if(all.length>0) await this._switchSession(all[0].sid);
+      else await this._newSession();
+    }
+    this._openSessions();
+    this.ui.toast('对话已删除');
+  }
+
+  async _openSessions() {
+    const allMeta = await this.memory.allSessMeta();
+    const sessions = allMeta.filter(m=>m.sid!=='current');
+    const list = document.getElementById('sessionList');
+    list.innerHTML = sessions.length===0 ? '<p style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px">还没有对话记录</p>' : '';
+    for(const s of sessions) {
+      const title = s.title || await this.memory.sessTitle(s.sid);
+      const isActive = s.sid===this.sid;
+      const date = s.lastActive ? new Date(s.lastActive).toLocaleDateString('zh-CN') : '';
+      const item = document.createElement('div');
+      item.className=`session-item${isActive?' active-session':''}`;
+      item.innerHTML=`<div class="session-info"><div class="session-title">${this.ui.esc(title)}</div><div class="session-date">${date} · ${s.msgCount||0}条</div></div><button class="session-delete" data-sid="${s.sid}">✕</button>`;
+      item.addEventListener('click',e=>{if(!e.target.classList.contains('session-delete'))this._switchSession(s.sid);});
+      item.querySelector('.session-delete').addEventListener('click',e=>{e.stopPropagation();this._deleteSession(s.sid);});
+      list.appendChild(item);
+    }
+    this.modal.open('sessions');
+  }
+
+  async _viewProfile() {
+    const profile = await this.memory.profile();
+    const content = document.getElementById('profileContent');
+    let html='';
+    html+='<div class="profile-section"><div class="profile-label">已知信息</div>';
+    html+=profile.facts?.length ? `<div class="profile-text">${profile.facts.map(f=>'• '+this.ui.esc(f)).join('<br>')}</div>` : '<div class="profile-empty">还没有记录…多聊聊吧 🤗</div>';
+    html+='</div><div class="profile-section"><div class="profile-label">反复出现的主题</div>';
+    html+=profile.themes?.length ? `<div class="profile-text">${profile.themes.map(t=>'• '+this.ui.esc(t)).join('<br>')}</div>` : '<div class="profile-empty">还没有发现明显的主题</div>';
+    html+='</div><div class="profile-section"><div class="profile-label">重要事件</div>';
+    html+=profile.events?.length ? `<div class="profile-text">${profile.events.map(e=>'• '+this.ui.esc(e)).join('<br>')}</div>` : '<div class="profile-empty">还没有记录重要事件</div>';
+    html+='</div>';
+    if(profile.lastUpdated) html+=`<p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px">最后更新：${new Date(profile.lastUpdated).toLocaleString('zh-CN')}</p>`;
+    content.innerHTML=html;
+    this.modal.open('profile');
+  }
+
+  async _setApiKey() {
+    const cur = C.apiKey; const masked = cur ? cur.slice(0,8)+'…'+cur.slice(-4) : '（未设置）';
+    const curProxy = C.proxyURL || '（未使用代理）';
+    const nk = prompt(`API Key：${masked}\n代理：${curProxy}\n\n输入新 Key（留空不变）：`);
+    if(nk!==null&&nk.trim()){C.apiKey=nk.trim();this.ui.toast('API Key 已更新 ✓');}
+    const np = prompt(`代理地址（留空不变，输入 - 清除代理）：\n当前：${curProxy}`);
+    if(np!==null){ if(np.trim()==='-'){C.proxyURL='';this.ui.toast('代理已清除');} else if(np.trim()){C.proxyURL=np.trim();this.ui.toast('代理已更新');} }
+    this.modal.closeAll();
+  }
+
+  async _export() {
+    try {
+      const allMsgs = await DB.all(this.db, 'msgs');
+      const profile = await this.memory.profile();
+      const allMeta = await DB.all(this.db, 'smeta');
+      const insights = await DB.all(this.db, 'insights');
+      const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, messages:allMsgs };
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=`xinyu_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+      this.modal.closeAll(); this.ui.toast('数据已导出 📥');
+    } catch(e) { this.ui.toast('导出失败'); }
+  }
+
+  async _clearAll() {
+    if(!confirm('清除所有对话和记忆？')) return;
+    if(!confirm('真的要全部删除吗？不可撤销。')) return;
+    try {
+      await DB.clear(this.db, 'msgs'); await DB.clear(this.db, 'profile');
+      await DB.clear(this.db, 'smeta'); await DB.clear(this.db, 'insights');
+      this.sid=this._genId();
+      await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
+      await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
+      this.ui.clearChat(); this.ui.showWelcome();
+      this.ui.renderTopics(this.memory, this.sid);
+      this.modal.closeAll(); this.ui.toast('数据已清除');
+    } catch(e) { this.ui.toast('清除失败'); }
+  }
+
+  _showSetup() {
+    const overlay = document.getElementById('overlaySetup');
+    overlay.classList.remove('hidden');
+    const input = document.getElementById('setupKeyInput');
+    const btn = document.getElementById('btnSetupConfirm');
+    const err = document.getElementById('setupError');
+    const proxyInput = document.getElementById('setupProxyInput');
+
+    btn.addEventListener('click', async () => {
+      const key = input.value.trim();
+      if (!key || !key.startsWith('sk-')) {
+        err.textContent = '请输入有效的 API Key（以 sk- 开头）';
+        err.style.display = 'block';
+        return;
+      }
+      err.style.display = 'none';
+      C.apiKey = key;
+      if (proxyInput.value.trim()) {
+        C.proxyURL = proxyInput.value.trim();
+      }
+      btn.disabled = true;
+      btn.textContent = '验证中…';
+      // 快速验证
+      try {
+        await this._verifyKey();
+        overlay.classList.add('hidden');
+        // 重新初始化
+        await this._fullInit();
+      } catch(e) {
+        err.textContent = '连接失败：' + (e.message||'请检查Key和网络');
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '开始使用';
+      }
+    }, { once: true });
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') btn.click();
+    });
+  }
+
+  async _verifyKey() {
+    const url = C.proxyURL || C.baseURL;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${C.apiKey}` },
+      body: JSON.stringify({ model: C.flash, messages: [{ role: 'user', content: 'hi' }], max_tokens: 5, stream: false })
+    });
+    if (!resp.ok) {
+      if (resp.status === 401) throw new Error('API Key 无效');
+      throw new Error(`HTTP ${resp.status}`);
+    }
+  }
+
+  async _fullInit() {
+    this.db = await DB.open();
+    this.memory = new Memory(this.db);
+    this.api = new API(this.memory);
+
+    let cur = await DB.get(this.db, 'smeta', 'current');
+    if (!cur) {
+      this.sid = this._genId();
+      await DB.put(this.db, 'smeta', { sid: 'current', currentSid: this.sid });
+      await DB.put(this.db, 'smeta', { sid: this.sid, title: '新的对话', createdAt: Date.now(), lastActive: Date.now(), msgCount: 0, summary: '' });
+    } else {
+      this.sid = cur.currentSid;
+    }
+
+    const ms = await this.memory.allMsgs(this.sid);
+    if (ms.length === 0) {
+      this.ui.showWelcome();
+      this.ui.renderTopics(this.memory, this.sid);
+    } else {
+      this.ui.hideWelcome();
+      for (const m of ms) {
+        if (m.role === 'user') this.ui.addUserMsg(m.content, m.ts);
+        else if (m.role === 'assistant') this.ui.addAssistantMsg(m.content, m.ts);
+      }
+    }
+
+    this._bindEvents();
+    this._setupInputResize();
+    this._setupViewport();
+    this._backgroundCompress();
+
+    const insights = await this.memory.getInsights();
+    this.ui.renderInsights(insights, document.getElementById('insightsEmpty'), document.getElementById('insightsList'));
+  }
+
+  _genId() { return 'sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); }
+}
+
+// ── PWA 支持 ──────────────────────────────────────────────────
+(function setupPWA() {
+  const manifest = {
+    name: '心语 · 私人AI',
+    short_name: '心语',
+    description: '温暖私密的AI伴侣，了解你、记住你',
+    start_url: location.href,
+    display: 'standalone',
+    background_color: '#f5f0eb',
+    theme_color: '#f5f0eb',
+    orientation: 'portrait',
+    icons: [{
+      src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="36" fill="#b8754f"/><text x="96" y="120" font-size="90" text-anchor="middle" fill="white">🕯️</text></svg>'),
+      sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable'
+    }]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const link = document.createElement('link');
+  link.rel = 'manifest'; link.href = URL.createObjectURL(blob);
+  document.head.appendChild(link);
+})();
+
+// ── 启动 ──────────────────────────────────────────────────────
+const app = new App();
+app.init().catch(e => {
+  console.error('启动失败', e);
+  document.getElementById('chatContainer').innerHTML =
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:40px"><p style="color:var(--danger)">加载失败，请刷新页面</p></div>';
+});
+</script>
+</body>
+</html>
