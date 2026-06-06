@@ -713,9 +713,29 @@ class Memory {
   async compress(sid) {
     const ms = await this.activeMsgs(sid); if(ms.length<=C.compressThreshold) return false;
     const toC = ms.slice(0, ms.length-C.workMsgs);
-    const prompt = `分析对话片段并提取关键信息。\n\n${toC.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}\n\n请返回严格JSON（不要markdown）：{"summary":"2-4句中文摘要","new_facts":[],"new_themes":[],"new_events":[]}`;
+    const profile = await this.profile();
+    const summary = await this.sessSummary(sid);
+    const prompt = `以下是用户和此间的对话片段。这些消息即将被压缩——你的任务是忠实地把它们浓缩成记忆，让此间在之后和用户聊天时还能记得这段对话里发生了什么。
+
+${toC.map(m=>(m.role==='user'?'用户：'+m.content:'此间：'+m.content)).join('\n')}
+
+请返回严格JSON（不要markdown）：
+{
+  "summary": "2-4句中文摘要。保留关键的情感转折和对话脉络——不是罗列事实，而是像给未来自己写备忘：'他们聊到了…用户说到…的时候明显…后来…'",
+  "new_facts": ["用户在这段对话中透露的关于自己的信息。比如'我换工作了'、'我和父亲关系不好'、'我睡眠很差'。只记录用户自己说的，不加解读"],
+  "new_themes": ["反复出现的关切或话题模式。比如'总在担心别人怎么看自己'、'对未来的不确定感'。一个词或短句即可"],
+  "new_events": ["用户提到的具体事件。比如'上周和老板吵了一架'、'下个月要搬家'"]
+}
+
+关键原则：
+- 不评判。不说'用户很焦虑''用户有进步'——这不是你需要说的
+- 忠实。原话怎么说就怎么记，不要美化也不要简化
+- 保留情感纹理。如果用户说到某件事时语气变了、停住了、绕开了——值得记一笔
+- 区分事实和解读。new_facts只记用户明确说过的，不要推测
+- 空白不可怕。如果没有新信息，返回空数组`;
+
     try {
-      const result = await this._apiCall(prompt, true);
+      const result = await this._apiCall(prompt, true, 2048, sysPrompt(profile, summary));
       let p; try { p=JSON.parse(result.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim()); } catch(e) { return false; }
       const es = await this.sessSummary(sid);
       await this.updSessSummary(sid, es ? `${es}\n\n更早：${p.summary}` : p.summary);
