@@ -188,6 +188,8 @@ body{
 .message.assistant .bubble{background:var(--ai-bubble);color:var(--ai-text);border:1px solid var(--border);border-bottom-left-radius:6px}
 .message.system .bubble{background:var(--card-bg);border:1px dashed var(--border);border-radius:var(--radius-lg);font-size:13px;color:var(--text-secondary);text-align:center;line-height:1.7;padding:16px 20px}
 .message-meta{font-size:11px;color:var(--text-muted);margin-top:3px;padding:0 8px}
+.message.search-match .bubble{box-shadow:0 0 0 3px var(--accent);transition:box-shadow 0.3s ease}
+.search-highlight{background:rgba(184,117,79,0.25);border-radius:2px;padding:0 1px}
 .thinking-indicator{
   display:flex;align-items:center;gap:4px;padding:10px 16px;
   font-size:13px;color:var(--text-secondary);align-self:flex-start;animation:fadeInUp 0.3s ease
@@ -196,6 +198,28 @@ body{
 .thinking-indicator .dots span{width:5px;height:5px;border-radius:50%;background:var(--thinking-dot);animation:dotPulse 1.4s ease-in-out infinite}
 .thinking-indicator .dots span:nth-child(2){animation-delay:0.2s}
 .thinking-indicator .dots span:nth-child(3){animation-delay:0.4s}
+
+/* Search bar */
+.search-bar{padding:6px 10px;background:var(--nav-bg);border-bottom:1px solid var(--border);flex-shrink:0;transition:all var(--transition)}
+.search-row{display:flex;align-items:center;gap:6px}
+.search-input{
+  flex:1;padding:8px 12px;border-radius:18px;border:1.5px solid var(--border);
+  background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);outline:none
+}
+.search-input:focus{border-color:var(--accent)}
+.search-nav-btn{
+  width:30px;height:30px;border-radius:50%;border:none;
+  background:var(--surface);color:var(--text-secondary);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all var(--transition);flex-shrink:0
+}
+.search-nav-btn:active{background:var(--border)}
+.search-nav-btn:disabled{opacity:0.3;pointer-events:none}
+.search-count{font-size:11px;color:var(--text-muted);white-space:nowrap;flex-shrink:0}
+.search-close-btn{
+  width:28px;height:28px;border-radius:50%;border:none;
+  background:transparent;color:var(--text-muted);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0
+}
 
 /* Summary card in chat */
 .summary-card{
@@ -371,12 +395,22 @@ body{
 
   <!-- Chat View -->
   <div class="view active" id="viewChat">
+    <div class="search-bar hidden" id="searchBar">
+      <div class="search-row">
+        <button class="search-nav-btn" id="searchPrev" disabled>↑</button>
+        <input class="search-input" id="searchInput" placeholder="搜索消息…" autocomplete="off">
+        <button class="search-nav-btn" id="searchNext" disabled>↓</button>
+        <span class="search-count" id="searchCount"></span>
+        <button class="search-close-btn" id="searchClose">✕</button>
+      </div>
+    </div>
     <div class="chat-container" id="chatContainer">
       <div class="welcome" id="welcome">
         <div class="welcome-emoji">🕯️</div>
         <div class="welcome-title">这里很安全</div>
         <div class="welcome-sub">想说什么都可以<br>我会记住你说过的每一句话</div>
         <div class="topic-cards" id="topicCards"></div>
+        <div class="topic-refresh" id="topicRefresh" style="display:none">🔄 换一批话题</div>
       </div>
     </div>
     <div class="chat-input-area">
@@ -387,6 +421,7 @@ body{
         </button>
       </div>
       <div class="chat-actions">
+        <button class="action-chip" id="chipSearch">🔎 搜索</button>
         <button class="action-chip" id="chipDeep">🌙 深度思考</button>
         <button class="action-chip" id="chipSummary">📝 生成总结</button>
       </div>
@@ -957,6 +992,7 @@ class UI {
   // Topics
   async renderTopics(memory, sid) {
     this.topicCards.innerHTML='<div class="topic-loading">✨ 准备话题中…</div>';
+    document.getElementById('topicRefresh').style.display='none';
     try {
       const topics = await memory.genTopics(sid);
       this.topicCards.innerHTML = topics.map((t,i) => `
@@ -969,6 +1005,7 @@ class UI {
           <span class="topic-card-arrow">→</span>
         </div>
       `).join('');
+      document.getElementById('topicRefresh').style.display='block';
     } catch(e) {
       this.topicCards.innerHTML='<div class="topic-loading">准备话题中…</div>';
     }
@@ -1042,6 +1079,9 @@ class App {
     this.db=null; this.memory=null; this.api=null;
     this.ui=new UI(); this.modal=new Modal();
     this.sid=null; this.generating=false;
+    this.searchMatches=[]; this.searchIdx=-1; this.searchQuery='';
+    this._searchTimer=null;
+    this._uncompressedCnt=0;
   }
 
   async init() {
@@ -1065,6 +1105,7 @@ class App {
     }
 
     const ms = await this.memory.allMsgs(this.sid);
+    this._uncompressedCnt = ms.filter(m=>!m.compressed).length;
     if(ms.length===0) {
       this.ui.showWelcome();
       this.ui.renderTopics(this.memory, this.sid);
@@ -1092,6 +1133,18 @@ class App {
 
     this.ui.chipDeep.addEventListener('click', ()=>this.ui.setDeepMode(!this.ui.deepMode));
     this.ui.chipSummary.addEventListener('click', ()=>this._genSummary());
+    document.getElementById('chipSearch').addEventListener('click', ()=>this._toggleSearch());
+    document.getElementById('searchClose').addEventListener('click', ()=>this._closeSearch());
+    document.getElementById('searchInput').addEventListener('input', ()=>{
+      clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(()=>this._doSearch(), 200);
+    });
+    document.getElementById('searchPrev').addEventListener('click', ()=>this._navigateSearch(-1));
+    document.getElementById('searchNext').addEventListener('click', ()=>this._navigateSearch(1));
+    document.getElementById('searchInput').addEventListener('keydown', e=>{
+      if(e.key==='Enter') { e.preventDefault(); this._navigateSearch(e.shiftKey?-1:1); }
+      if(e.key==='Escape') this._closeSearch();
+    });
 
     // Tab switching
     document.querySelectorAll('.tab-item').forEach(b=>b.addEventListener('click',()=>{
@@ -1118,6 +1171,9 @@ class App {
         this.ui.input.style.height='auto'; this.ui.input.style.height=Math.min(this.ui.input.scrollHeight,120)+'px';
         this.ui.switchTab('chat');
       }
+    });
+    document.getElementById('topicRefresh').addEventListener('click', ()=>{
+      this.ui.renderTopics(this.memory, this.sid);
     });
 
     // Generate insight
@@ -1153,8 +1209,10 @@ class App {
   }
 
   async _backgroundCompress() {
-    const cnt = (await DB.byIdx(this.db,'msgs','sid',this.sid)).filter(m=>!m.compressed).length;
-    if(cnt>C.compressThreshold) await this.memory.compress(this.sid);
+    if(this._uncompressedCnt>C.compressThreshold) {
+      const ok = await this.memory.compress(this.sid);
+      if(ok) this._uncompressedCnt -= this._uncompressedCnt - C.workMsgs;
+    }
   }
 
   async _send() {
@@ -1178,7 +1236,7 @@ class App {
         else if(c.t==='content') { if(thinkingShown){this.ui.hideThinking();thinkingShown=false;} full+=c.c; this.ui.appendAssistant(c.c); }
       }
       this.ui.hideThinking(); this.ui.finishAssistant();
-      if(!full){ full='（我似乎在出神…能再说一遍吗？）'; this.ui.appendAssistant(full); this.ui.finishAssistant(); }
+      if(!full){ full='（我似乎在出神…能再说一遍吗？）'; this.ui.addAssistantMsg(full); }
       await this._saveMsg('assistant', full);
       await this._backgroundCompress();
 
@@ -1204,10 +1262,97 @@ class App {
   async _saveMsg(role, content) {
     const msg = { sid:this.sid, role, content, ts:Date.now(), compressed:false };
     await DB.put(this.db, 'msgs', msg);
+    this._uncompressedCnt++;
     const meta = await DB.get(this.db, 'smeta', this.sid) || { sid:this.sid };
     meta.lastActive=Date.now(); meta.msgCount=(meta.msgCount||0)+1;
     if(!meta.createdAt) meta.createdAt=Date.now();
     await DB.put(this.db, 'smeta', meta);
+  }
+
+  // ── 搜索 ──────────────────────────────────────────────────
+  _toggleSearch() {
+    const bar = document.getElementById('searchBar');
+    const show = bar.classList.contains('hidden');
+    if (show) { bar.classList.remove('hidden'); document.getElementById('searchInput').focus(); this._doSearch(); }
+    else this._closeSearch();
+  }
+
+  _closeSearch() {
+    document.getElementById('searchBar').classList.add('hidden');
+    this._clearHighlights();
+    this.searchMatches=[]; this.searchIdx=-1; this.searchQuery='';
+    this._searchTimer=null;
+  }
+
+  _doSearch() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (q === this.searchQuery) return;
+    this.searchQuery = q;
+    this._clearHighlights();
+    this.searchMatches = []; this.searchIdx = -1;
+
+    if (!q || q.length < 2) {
+      document.getElementById('searchCount').textContent = '';
+      document.getElementById('searchPrev').disabled = true;
+      document.getElementById('searchNext').disabled = true;
+      return;
+    }
+
+    const msgEls = document.querySelectorAll('#chatContainer .message.user, #chatContainer .message.assistant');
+    const count = document.getElementById('searchCount');
+    const prevBtn = document.getElementById('searchPrev');
+    const nextBtn = document.getElementById('searchNext');
+
+    let matchCount = 0;
+    msgEls.forEach((el) => {
+      const bubble = el.querySelector('.bubble');
+      if (!bubble) return;
+      const text = bubble.textContent.toLowerCase();
+      if (text.includes(q)) {
+        this.searchMatches.push(el);
+        const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+        bubble.innerHTML = bubble.textContent.replace(regex, '<mark class="search-highlight">$1</mark>');
+        matchCount++;
+      }
+    });
+
+    if (matchCount > 0) {
+      count.textContent = `${matchCount} 条匹配`;
+      prevBtn.disabled = false; nextBtn.disabled = false;
+      this._navigateSearch(1);
+    } else {
+      count.textContent = '无匹配';
+      prevBtn.disabled = true; nextBtn.disabled = true;
+    }
+  }
+
+  _navigateSearch(dir) {
+    if (this.searchMatches.length === 0) return;
+    if (this.searchIdx >= 0 && this.searchIdx < this.searchMatches.length) {
+      this.searchMatches[this.searchIdx].classList.remove('search-match');
+    }
+    this.searchIdx += dir;
+    if (this.searchIdx >= this.searchMatches.length) this.searchIdx = 0;
+    if (this.searchIdx < 0) this.searchIdx = this.searchMatches.length - 1;
+
+    const el = this.searchMatches[this.searchIdx];
+    el.classList.add('search-match');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const count = document.getElementById('searchCount');
+    count.textContent = `${this.searchIdx + 1}/${this.searchMatches.length}`;
+  }
+
+  _clearHighlights() {
+    document.querySelectorAll('#chatContainer .message.search-match').forEach(el => el.classList.remove('search-match'));
+    document.querySelectorAll('#chatContainer .message mark.search-highlight').forEach(m => {
+      const parent = m.parentNode;
+      parent.replaceChild(document.createTextNode(m.textContent), m);
+      parent.normalize();
+    });
+    document.getElementById('searchCount').textContent = '';
+    document.getElementById('searchPrev').disabled = true;
+    document.getElementById('searchNext').disabled = true;
   }
 
   async _genSummary() {
@@ -1245,6 +1390,7 @@ class App {
     this.sid=this._genId();
     await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
     await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
+    this._uncompressedCnt=0;
     this.ui.clearChat(); this.ui.showWelcome();
     this.ui.renderTopics(this.memory, this.sid);
     this.ui.switchTab('chat');
@@ -1261,6 +1407,7 @@ class App {
     await DB.put(this.db, 'smeta', { sid:'current', currentSid:newSid });
     this.ui.clearChat();
     const ms = await this.memory.allMsgs(newSid);
+    this._uncompressedCnt = ms.filter(m=>!m.compressed).length;
     if(ms.length>0) {
       this.ui.hideWelcome();
       for(const m of ms) {
@@ -1346,7 +1493,7 @@ class App {
       const url = URL.createObjectURL(blob);
       const a=document.createElement('a'); a.href=url; a.download=`xinyu_${new Date().toISOString().slice(0,10)}.json`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      this.modal.closeAll(); this.ui.toast('数据已导出 📥');
+      this.modal.closeAll(); this.ui.toast('数据已导出，建议存到云盘或发给自己备份 📥');
     } catch(e) { this.ui.toast('导出失败'); }
   }
 
@@ -1504,6 +1651,7 @@ class App {
     }
 
     const ms = await this.memory.allMsgs(this.sid);
+    this._uncompressedCnt = ms.filter(m=>!m.compressed).length;
     if (ms.length === 0) {
       this.ui.showWelcome();
       this.ui.renderTopics(this.memory, this.sid);
