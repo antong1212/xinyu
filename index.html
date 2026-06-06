@@ -727,30 +727,33 @@ class Memory {
 
   async genReport(sid) {
     const ms = await this.allMsgs(sid); if(ms.length<2) return null;
-    const prompt = `你是一位温柔的心理观察者。请为以下对话生成一份回顾报告。
+    const profile = await this.profile();
+    const summary = await this.sessSummary(sid);
+    const prompt = `请为以下对话生成一份回顾报告。你的任务是帮用户看见这段对话里发生了什么——不是评价这段对话"好"还是"不好"，不是给用户打分。
 
 对话内容：
-${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
+${ms.map(m=>(m.role==='user'?'用户：'+m.content:'此间：'+m.content)).join('\n')}
 
 请返回严格JSON（不要markdown代码块）：
 {
-  "title": "给这段对话起个标题，10个字以内，像书名或日记标题",
-  "summary": "这次对话的简要回顾（2-3句话）",
-  "key_moment": "你说过的最值得被记住的一句话（原话引用，没有就填''）",
-  "ai_message": "你想对ta说的温暖的话（2-3句，像深夜朋友聊天）",
-  "analysis": "观察到的情绪脉络和值得关注的信号（2-3句）",
-  "spark": "一个温暖的收尾——可以是一个问题引导下次对话，也可以是一句祝福（1句话）"
+  "title": "给这段对话起个标题，10个字以内",
+  "summary": "这次对话的简要回顾（2-3句话，描述发生了什么而不是评价）",
+  "key_moment": "用户说过的、最值得被记住的一句话（原话引用，没有就填空字符串）。不是挑"好听的话"——即使是一句丧气话，只要它够真实、够坦诚，就比漂亮话更值得被记住",
+  "analysis": "观察到的情绪脉络和值得关注的信号（2-3句）。说"你提到…""这里有一种…的感觉"，不说"你应该…""你做得好"",
+  "ai_message": "你想对ta说的话（2-3句）——在乎但不迎合，有判断不下判决",
+  "spark": "收尾——可以是一个开放的问题引导下次对话，也可以是一句真诚的话（1句话）"
 }
 
-语气温暖、真诚、不评判。基于对话内容，不编造。如果某个字段没有足够信息就留空字符串。`;
+关键原则：
+- 不评判。不说"你做得好""你很棒"或"你应该…"
+- 真诚。不确定就说"不确定"。某个字段信息不够就留空
+- 帮用户看见，不是帮用户下结论`;
 
     try {
-      const r = await this._apiCall(prompt, true, 4096);
+      const r = await this._apiCall(prompt, true, 4096, sysPrompt(profile, summary));
       const p = JSON.parse(r.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim());
-      // 存储报告
       const report = { sid, ts: Date.now(), data: p };
       await DB.put(this.db, 'reports', report);
-      // 同时更新会话摘要（用 summary 字段）
       await this.updSessSummary(sid, p.summary || '');
       return p;
     } catch(e) { console.error('报告生成失败',e); return null; }
@@ -792,30 +795,29 @@ ${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
     if(profile.themes?.length) fullContext += '\n反复出现的主题：' + profile.themes.join('、');
     if(profile.events?.length) fullContext += '\n提及的重要事件：' + profile.events.join('；');
 
-    const prompt = `你是「此间」的洞察模式。你的任务是像老朋友翻看日记一样，从用户的对话中发现那些他们自己可能没注意到的规律。
+    const prompt = `你现在切换到洞察模式。翻看用户的对话记录，像翻一本日记——不是找问题，不是做诊断，而是发现那些用户自己可能还没注意到的规律和变化。
 
 ${fullContext}
 
 最近的对话：
-${recentMsgs.map(m=>(m.role==='user'?'用户：'+m.content:'AI：'+m.content)).join('\n')}
+${recentMsgs.map(m=>(m.role==='user'?'用户：'+m.content:'此间：'+m.content)).join('\n')}
 
 请返回严格JSON：
 {
-  "patterns": [{"title":"你看到了什么模式","body":"具体说，比如每次提到什么话题ta会有什么反应"}],
-  "strengths": [{"title":"你注意到的力量","body":"不是夸'你很棒'，而是'你在这种情况下选择了…这说明你…'"}],
-  "growth": [{"title":"和之前的对话比，有什么变化","body":"比如以前你会…现在你开始…"}],
-  "suggestion": "一段话——不是建议，更像引导方向（2-3句）",
-  "overall": "整体的观察（1-2句，直接、不绕）"
+  "patterns": [{"title":"你看到了什么模式","body":"具体说——比如每次提到某个话题ta会沉默、会激动、会绕开。描述你看到的，不是解释"为什么""}],
+  "strengths": [{"title":"你注意到的力量","body":"不是夸'你很棒'。是'你在这种情况下选择了…这说明你在乎…'——说事实，不说评价"}],
+  "growth": [{"title":"和之前的对话比，有什么变化","body":"比如'以前提到这个你会…，最近你开始…'——变化本身比好坏更重要"}],
+  "suggestion": "一段话（2-3句）——不是建议，更不是指导。像一个了解你的人说'你有没有注意到…'" ,
+  "overall": "整体的观察（1-2句，直接、不绕、不煽情）"
 }
 
 关键：
-• 必须连接长期记忆里的信息和最近的对话——只说有依据的事
-• 不说'你很棒'、'继续加油'这种废话
-• 像一个真正了解用户的人在说话，不给诊断，不贴标签
-• 如果某个角度真的没有足够信息，返回空数组`;
+• 连接长期记忆和最近对话——只说有依据的，不编造
+• 不评判、不诊断、不贴标签。不夸、不安慰、不指导
+• 如果某个角度信息不够，返回空数组`;
 
     try {
-      const r = await this._apiCall(prompt, true, 4096);
+      const r = await this._apiCall(prompt, true, 4096, sysPrompt(profile, null));
       const p = JSON.parse(r.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim());
       const insight = { ts: Date.now(), data: p };
       await DB.put(this.db, 'insights', insight);
@@ -828,14 +830,14 @@ ${recentMsgs.map(m=>(m.role==='user'?'用户：'+m.content:'AI：'+m.content)).j
     return all.sort((a,b)=>b.ts-a.ts);
   }
 
-  async _apiCall(prompt, deep=false, maxT=2048) {
+  async _apiCall(prompt, deep=false, maxT=2048, sysMsg=null) {
     const apiUrl = C.proxyURL || C.baseURL;
     const resp = await fetch(apiUrl, {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${C.apiKey}`},
       body:JSON.stringify({
         model:deep?C.pro:C.flash,
-        messages:[{role:'system',content:'你是一个专业的分析助手。严格返回JSON或要求的格式。'},{role:'user',content:prompt}],
+        messages:[{role:'system',content:sysMsg||'你是一个专业的分析助手。严格返回JSON或要求的格式。'},{role:'user',content:prompt}],
         thinking:deep?{type:'enabled'}:undefined,
         reasoning_effort:deep?'medium':undefined,
         temperature:0.3, max_tokens:maxT, stream:false
