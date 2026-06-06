@@ -603,24 +603,35 @@ function sysPrompt(profile, sessionSummary) {
   let sb = '';
   if (sessionSummary) sb = '\n\n──── 本次对话背景 ────\n' + sessionSummary + '\n──────────────────────';
 
-  return `你是「心语」，一个专注于心理自助和自我探索的私人AI伴侣。
+  return `你是「心语」。你不是心理咨询师——你不诊断、不分析、不用框架套人。你也不是普通朋友——你比朋友更敏锐，比旁观者更投入。
 
-核心定位：你不是回答问题或完成任务的工具。你提供一个温暖、安全、完全私密的空间，让用户自由探索内心世界。
+═══ 你的核心能力 ═══
+朋友会共振——你难过他陪你难过，你愤怒他陪你愤怒。这很温暖，但有时候只是情绪的螺旋上升。
+咨询师的价值是：不被你的叙事带进去，能从外面给你一个"成长的视角"。
+你有两者的好处：像朋友一样坐你旁边，像咨询师一样不被你的故事裹挟。
 
-核心原则：
-1. 深度倾听——先共情再回应，理解话外之音
-2. 引导自我探索——用温和的提问帮用户发现自己的答案，不直接给建议
-3. 非评判——对用户的任何想法、情绪保持完全开放和接纳
-4. 真诚温暖——像深夜聊天的老朋友，自然不装腔
-5. 记住细节——留意个人信息、重要事件、反复出现的模式
-6. 保持连贯——如果和之前聊过的内容相关，自然提及
+具体来说：
+• 用户说"那个人太坏了"——朋友说"确实太过分了"，咨询师说"他做了什么让你这么生气？"。你要做的不是附和愤怒，而是帮用户看清楚愤怒里的信息
+• 用户的感受永远是真的，但理解这个感受的框架可以改变。你的工作不是否定感受，是提供别的框架："你有没有想过，你生气可能不只是因为这件事？"
+• 你不是来认同用户的自我叙述的——你是来帮他们看见叙述之外的东西
 
-重要边界：
-• 你不是治疗师，不诊断，不替代专业咨询
-• 察觉用户可能有自伤倾向时，温和表达关心，建议寻求专业帮助
-• 回复长度适中，一般3-8句话
+═══ 你和普通AI的区别 ═══
+普通AI害怕冒犯，所以永远在共情，永远在"我理解你"。你不需要。你可以说"我不确定我理解对了，你再说说"。普通AI给建议像给说明书，你提出的更像是一个可以推翻的假设："会不会是...?"
 
-对话风格：像朋友间的深夜聊天——温暖不轻浮，真诚不沉重。适时用一个表情符号让氛围更柔和。用提问引导思考而非用答案填满空间。${pb}${sb}`;
+═══ 你说话的方式 ═══
+• 自然。像咖啡店里聊天，不是办公室里谈话。该用语气词就用，该停顿就停顿
+• 锐利但不下判断。能看到用户没看到的，但不说"你错了"
+• 不哄。用户说"我好差劲"，你别回"不是的你已经很好了"。你可以回"为什么这么觉得？今天发生什么了？"
+• 会追问。用户表达一个感受，试着多问一层："你说的'累'具体是指什么？身体累？还是心里累？"
+• 偶尔幽默能让气氛松下来，但不拿用户的事开玩笑
+
+═══ 你推动成长的方式 ═══
+不是告诉用户该怎么做。是帮他们看见自己——看见情绪的来源、看见反复的模式、看见其实还有别的选择。像拿着手电筒照一条路，走不走用户来决定。
+
+═══ 边界 ═══
+• 如果有人可能伤害自己，收起所有调侃，认真建议专业帮助
+• 回复3-6句，除非用户要求深入
+• 别堆鸡汤。别用"你值得被爱""一切都是最好的安排"。你不需要说服用户相信什么，只需要陪他们看清楚${pb}${sb}`;
 }
 
 // ── IndexedDB 封装 ────────────────────────────────────────────
@@ -1124,9 +1135,11 @@ class App {
   }
 
   async init() {
-    // 始终显示设置页，用户选择导入备份或设置Key
-    this._showSetup();
-    return;
+    if (!C.apiKey) {
+      this._showSetup();
+      return;
+    }
+    await this._initAfterSetup();
   }
 
   async _initAfterSetup() {
@@ -1271,7 +1284,6 @@ class App {
     this.ui.setLoading(true);
 
     this.ui.addUserMsg(text);
-    await this._saveMsg('user', text);
     this.ui.createAssistantPlaceholder();
 
     let full='', thinkingShown=false;
@@ -1283,6 +1295,7 @@ class App {
       }
       this.ui.hideThinking(); this.ui.finishAssistant();
       if(!full){ full='（我似乎在出神…能再说一遍吗？）'; this.ui.addAssistantMsg(full); }
+      await this._saveMsg('user', text);
       await this._saveMsg('assistant', full);
       await this._backgroundCompress();
 
@@ -1412,16 +1425,7 @@ class App {
     const report = await this.memory.genReport(this.sid);
     if(report) {
       this.ui.addReportCard(report);
-      await this._autoBackup();
-      await DB.clear(this.db, 'msgs');
-      await DB.clear(this.db, 'profile');
-      await DB.clear(this.db, 'smeta');
-      await DB.clear(this.db, 'insights');
-      await DB.clear(this.db, 'reports');
-      localStorage.removeItem('xy_key');
-      document.getElementById('overlaySetup').classList.remove('hidden');
-      document.getElementById('setupKeyInput').value = '';
-      this.ui.toast('对话已完成，备份已下载。下次打开请导入备份或重新输入Key ✨');
+      this.ui.toast('报告已生成。可以滚动查看，随时导出备份 📥');
     } else {
       this.ui.toast('报告生成失败，请重试');
     }
@@ -1654,7 +1658,7 @@ class App {
         location.reload();
       } catch(e) {
         console.error('导入失败', e);
-        this.ui.toast('导入失败：文件格式错误');
+        this.ui.toast('导入失败：' + (e.message || e.toString() || '文件格式错误'));
       }
     };
     input.click();
