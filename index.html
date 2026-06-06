@@ -536,36 +536,35 @@ body{
   </div>
 </div>
 
-<!-- Setup overlay (first visit) -->
+<!-- Setup overlay -->
 <div class="overlay" id="overlaySetup">
   <div class="modal" style="border-radius:var(--radius-lg);text-align:center;padding:32px 20px 24px">
     <div style="font-size:48px;margin-bottom:12px">🕯️</div>
-    <h3 style="margin-bottom:6px">欢迎来到心语</h3>
-    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">
-      请输入你的 DeepSeek API Key 开始使用<br>
-      <span style="font-size:11px;color:var(--text-muted)">Key 只存在你的手机里，不会上传</span>
-    </p>
-    <input type="password" id="setupKeyInput" placeholder="sk-…"
-      style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
-      background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:6px">
-    <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">
-      <a href="https://platform.deepseek.com/api_keys" target="_blank" style="color:var(--accent)">获取 API Key →</a>
-    </p>
-    <div id="setupProxyToggle" style="margin-bottom:14px;text-align:left">
-      <details style="font-size:12px;color:var(--text-muted)">
-        <summary style="cursor:pointer;margin-bottom:8px">⚡ 高级：API 代理设置（解决跨域问题）</summary>
-        <input type="text" id="setupProxyInput" placeholder="代理地址，如 https://your-worker.workers.dev"
-          style="width:100%;padding:8px 12px;border-radius:10px;border:1px solid var(--border);
-          background:var(--input-bg);color:var(--text);font-size:12px;font-family:var(--font);outline:none">
-        <p style="margin-top:6px;font-size:10px">如果直接调用失败，可部署 Cloudflare Worker 代理（见部署指南）</p>
-      </details>
-    </div>
-    <button id="btnSetupConfirm"
-      style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;
-      font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition)">
-      开始使用
+    <h3 style="margin-bottom:16px">欢迎回到心语</h3>
+    <button id="btnSetupImport"
+      style="width:100%;padding:16px;border-radius:14px;border:none;background:var(--accent);color:#fff;
+      font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition);margin-bottom:16px">
+      📤 选择备份文件恢复
     </button>
-    <p id="setupError" style="font-size:12px;color:var(--danger);margin-top:10px;display:none"></p>
+    <div id="setupFirstTime" style="display:none;text-align:left">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.6">输入你的 DeepSeek API Key</p>
+      <input type="password" id="setupKeyInput" placeholder="sk-…"
+        style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+        background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:6px">
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px;text-align:center">
+        <a href="https://platform.deepseek.com/api_keys" target="_blank" style="color:var(--accent)">获取 API Key →</a>
+      </p>
+      <button id="btnSetupConfirm"
+        style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;
+        font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition)">
+        开始使用
+      </button>
+      <p id="setupError" style="font-size:12px;color:var(--danger);margin-top:10px;display:none"></p>
+    </div>
+    <button id="btnSetupToggle"
+      style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;font-family:var(--font);margin-top:4px;text-decoration:underline;text-underline-offset:3px">
+      第一次使用？设置 API Key →
+    </button>
   </div>
 </div>
 
@@ -1125,11 +1124,12 @@ class App {
   }
 
   async init() {
-    // 检查 API Key
-    if (!C.apiKey) {
-      this._showSetup();
-      return;
-    }
+    // 始终显示设置页，用户选择导入备份或设置Key
+    this._showSetup();
+    return;
+  }
+
+  async _initAfterSetup() {
 
     try {
       this.db = await DB.open();
@@ -1412,12 +1412,35 @@ class App {
     const report = await this.memory.genReport(this.sid);
     if(report) {
       this.ui.addReportCard(report);
-      this.ui.toast('对话报告已生成，开始新对话请点右上角 ☰ ✨');
+      await this._autoBackup();
+      await DB.clear(this.db, 'msgs');
+      await DB.clear(this.db, 'profile');
+      await DB.clear(this.db, 'smeta');
+      await DB.clear(this.db, 'insights');
+      await DB.clear(this.db, 'reports');
+      localStorage.removeItem('xy_key');
+      document.getElementById('overlaySetup').classList.remove('hidden');
+      document.getElementById('setupKeyInput').value = '';
+      this.ui.toast('对话已完成，备份已下载。下次打开请导入备份或重新输入Key ✨');
     } else {
       this.ui.toast('报告生成失败，请重试');
     }
     btn.disabled=false; btn.textContent='✅ 完成对话';
     this.generating=false;
+  }
+
+  async _autoBackup() {
+    const allMsgs = await DB.all(this.db, 'msgs');
+    const profile = await this.memory.profile();
+    const allMeta = await DB.all(this.db, 'smeta');
+    const insights = await DB.all(this.db, 'insights');
+    const reports = await DB.all(this.db, 'reports');
+    const encodedKey = C.apiKey ? btoa(C.apiKey) : '';
+    const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs, _key_encoded: encodedKey };
+    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`xinyu_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   }
 
   async _genInsight() {
@@ -1545,7 +1568,9 @@ class App {
       const allMeta = await DB.all(this.db, 'smeta');
       const insights = await DB.all(this.db, 'insights');
       const reports = await DB.all(this.db, 'reports');
-      const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs };
+      // key 用 base64 编码防明文泄露
+      const encodedKey = C.apiKey ? btoa(C.apiKey) : '';
+      const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs, _key_encoded: encodedKey };
       const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
       const url = URL.createObjectURL(blob);
       const a=document.createElement('a'); a.href=url; a.download=`xinyu_${new Date().toISOString().slice(0,10)}.json`;
@@ -1568,6 +1593,11 @@ class App {
         // 验证格式
         if (!data.messages || !data.exportedAt) {
           this.ui.toast('无效的备份文件'); return;
+        }
+
+        // 解码 key
+        if (data._key_encoded) {
+          try { C.apiKey = atob(data._key_encoded); } catch(e) {}
         }
 
         if (!confirm(`即将导入：\n• ${data.messages.length} 条消息\n• ${data.insights?.length||0} 条洞察\n• ${data.reports?.length||0} 份报告\n• ${data.sessions?.length||0} 个会话\n\n会覆盖现有数据，确定继续？`)) return;
@@ -1621,7 +1651,6 @@ class App {
         }
 
         this.ui.toast('导入成功 ✅');
-        // 重新加载
         location.reload();
       } catch(e) {
         console.error('导入失败', e);
@@ -1651,11 +1680,21 @@ class App {
   _showSetup() {
     const overlay = document.getElementById('overlaySetup');
     overlay.classList.remove('hidden');
+    const firstTime = document.getElementById('setupFirstTime');
+    const toggle = document.getElementById('btnSetupToggle');
     const input = document.getElementById('setupKeyInput');
     const btn = document.getElementById('btnSetupConfirm');
     const err = document.getElementById('setupError');
-    const proxyInput = document.getElementById('setupProxyInput');
 
+    // 切换首次使用表单
+    toggle.addEventListener('click', () => {
+      const show = firstTime.style.display === 'none';
+      firstTime.style.display = show ? 'block' : 'none';
+      toggle.textContent = show ? '← 返回' : '第一次使用？设置 API Key →';
+      if (show) input.focus();
+    });
+
+    // 确认按钮
     btn.addEventListener('click', async () => {
       const key = input.value.trim();
       if (!key || !key.startsWith('sk-')) {
@@ -1665,15 +1704,12 @@ class App {
       }
       err.style.display = 'none';
       C.apiKey = key;
-      if (proxyInput.value.trim()) {
-        C.proxyURL = proxyInput.value.trim();
-      }
       btn.disabled = true;
       btn.textContent = '验证中…';
       try {
         await this._verifyKey();
         overlay.classList.add('hidden');
-        await this._fullInit();
+        await this._initAfterSetup();
       } catch(e) {
         err.textContent = '连接失败：' + (e.message||'请检查Key和网络');
         err.style.display = 'block';
@@ -1684,6 +1720,12 @@ class App {
 
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') btn.click();
+    });
+
+    // 导入备份
+    document.getElementById('btnSetupImport').addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      this._import();
     });
   }
 
@@ -1698,48 +1740,6 @@ class App {
       if (resp.status === 401) throw new Error('API Key 无效');
       throw new Error(`HTTP ${resp.status}`);
     }
-  }
-
-  async _fullInit() {
-    try {
-      this.db = await DB.open();
-    } catch(e) {
-      console.warn('DB打开失败，重置', e);
-      indexedDB.deleteDatabase(C.dbName);
-      this.db = await DB.open();
-    }
-    this.memory = new Memory(this.db);
-    this.api = new API(this.memory);
-
-    let cur = await DB.get(this.db, 'smeta', 'current');
-    if (!cur) {
-      this.sid = this._genId();
-      await DB.put(this.db, 'smeta', { sid: 'current', currentSid: this.sid });
-      await DB.put(this.db, 'smeta', { sid: this.sid, title: '新的对话', createdAt: Date.now(), lastActive: Date.now(), msgCount: 0, summary: '' });
-    } else {
-      this.sid = cur.currentSid;
-    }
-
-    const ms = await this.memory.allMsgs(this.sid);
-    this._uncompressedCnt = ms.filter(m=>!m.compressed).length;
-    if (ms.length === 0) {
-      this.ui.showWelcome();
-      this.ui.renderTopics(this.memory, this.sid);
-    } else {
-      this.ui.hideWelcome();
-      for (const m of ms) {
-        if (m.role === 'user') this.ui.addUserMsg(m.content, m.ts);
-        else if (m.role === 'assistant') this.ui.addAssistantMsg(m.content, m.ts);
-      }
-    }
-
-    this._bindEvents();
-    this._setupInputResize();
-    this._setupViewport();
-    this._backgroundCompress();
-
-    const insights = await this.memory.getInsights();
-    this.ui.renderInsights(insights, document.getElementById('insightsEmpty'), document.getElementById('insightsList'));
   }
 
   _genId() { return 'sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); }
