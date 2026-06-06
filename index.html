@@ -485,6 +485,7 @@ body{
     <div class="modal-item" id="menuViewProfile"><span>📋 查看我的档案</span><span class="right">›</span></div>
     <div class="modal-item" id="menuSetApiKey"><span>🔑 设置 API Key</span><span class="right">›</span></div>
     <div class="modal-item" id="menuExport"><span>📥 导出所有数据</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuImport"><span>📤 导入数据</span><span class="right">›</span></div>
     <div class="modal-item" id="menuClearData"><span>🗑️ 清除所有数据</span><span class="right" style="color:var(--danger)">⚠</span></div>
     <button class="modal-close" id="btnCloseMenu" style="margin-top:8px;background:var(--border);border:none">关闭</button>
   </div>
@@ -1132,6 +1133,7 @@ class App {
     document.getElementById('menuViewProfile').addEventListener('click',()=>this._viewProfile());
     document.getElementById('menuSetApiKey').addEventListener('click',()=>this._setApiKey());
     document.getElementById('menuExport').addEventListener('click',()=>this._export());
+    document.getElementById('menuImport').addEventListener('click',()=>this._import());
     document.getElementById('menuClearData').addEventListener('click',()=>this._clearAll());
 
     // Overlay close
@@ -1346,6 +1348,76 @@ class App {
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
       this.modal.closeAll(); this.ui.toast('数据已导出 📥');
     } catch(e) { this.ui.toast('导出失败'); }
+  }
+
+  async _import() {
+    // 创建隐藏的文件选择器
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        // 验证格式
+        if (!data.messages || !data.exportedAt) {
+          this.ui.toast('无效的备份文件'); return;
+        }
+
+        if (!confirm(`即将导入：\n• ${data.messages.length} 条消息\n• ${data.insights?.length||0} 条洞察\n• ${data.sessions?.length||0} 个会话\n\n会覆盖现有数据，确定继续？`)) return;
+
+        // 清除现有数据
+        await DB.clear(this.db, 'msgs');
+        await DB.clear(this.db, 'profile');
+        await DB.clear(this.db, 'smeta');
+        await DB.clear(this.db, 'insights');
+
+        // 导入消息
+        if (data.messages) {
+          for (const m of data.messages) {
+            await DB.put(this.db, 'msgs', {
+              sid: m.sid || m.sessionId, role: m.role,
+              content: m.content, ts: m.ts || m.timestamp || Date.now(),
+              compressed: m.compressed || false
+            });
+          }
+        }
+
+        // 导入档案
+        if (data.profile) {
+          await DB.put(this.db, 'profile', { key: 'user_profile', value: data.profile });
+        }
+
+        // 导入会话元数据
+        if (data.sessions) {
+          for (const s of data.sessions) {
+            await DB.put(this.db, 'smeta', {
+              sid: s.sid || s.sessionId, title: s.title || '',
+              createdAt: s.createdAt || Date.now(), lastActive: s.lastActive || Date.now(),
+              msgCount: s.msgCount || s.messageCount || 0, summary: s.summary || ''
+            });
+          }
+        }
+
+        // 导入洞察
+        if (data.insights) {
+          for (const ins of data.insights) {
+            await DB.put(this.db, 'insights', { ts: ins.ts || Date.now(), data: ins.data });
+          }
+        }
+
+        this.ui.toast('导入成功 ✅');
+        // 重新加载
+        location.reload();
+      } catch(e) {
+        console.error('导入失败', e);
+        this.ui.toast('导入失败：文件格式错误');
+      }
+    };
+    input.click();
+    this.modal.closeAll();
   }
 
   async _clearAll() {
