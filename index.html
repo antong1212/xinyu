@@ -1469,12 +1469,7 @@ class App {
   }
 
   async _newSession() {
-    if(this.sid) {
-      const title = await this.memory.sessTitle(this.sid);
-      const meta = await DB.get(this.db, 'smeta', this.sid) || {};
-      meta.title=title; await DB.put(this.db, 'smeta', meta);
-    }
-    this.sid=this._genId();
+    this.sid = this._genId();
     await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
     await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'' });
     this._uncompressedCnt=0;
@@ -1485,12 +1480,8 @@ class App {
   }
 
   async _switchSession(newSid) {
-    if(newSid===this.sid){this.modal.closeAll();return;}
-    const oldTitle = await this.memory.sessTitle(this.sid);
-    const oldMeta = await DB.get(this.db, 'smeta', this.sid) || {};
-    oldMeta.title=oldTitle; await DB.put(this.db, 'smeta', oldMeta);
-
-    this.sid=newSid;
+    if(newSid === this.sid){ this.modal.closeAll(); return; }
+    this.sid = newSid;
     await DB.put(this.db, 'smeta', { sid:'current', currentSid:newSid });
     this.ui.clearChat();
     const ms = await this.memory.allMsgs(newSid);
@@ -1516,13 +1507,14 @@ class App {
     await DB.delByIdx(this.db, 'msgs', 'sid', sid);
     await DB.del(this.db, 'smeta', sid);
     if(sid===this.sid) {
-      const all=(await this.memory.allSessMeta()).filter(m=>m.sid!=='current'&&m.sid!==sid);
-      if(all.length>0) {
-        await this._switchSession(all[0].sid);
+      const remaining = (await DB.all(this.db, 'smeta')).filter(m => m.sid !== 'current' && m.sid !== sid);
+      if(remaining.length > 0) {
+        await this._switchSession(remaining[0].sid);
+        this.modal.open('sessions');
+        this._openSessions();
       } else {
         this.ui.clearChat();
         this.modal.closeAll();
-        // 回到设置页
         localStorage.clear();
         await DB.clear(this.db, 'msgs');
         await DB.clear(this.db, 'smeta');
@@ -1531,8 +1523,8 @@ class App {
         await DB.clear(this.db, 'reports');
         this._showSetup();
         this.ui.toast('对话已删除');
-        return;
       }
+      return;
     }
     this._openSessions();
     this.ui.toast('对话已删除');
