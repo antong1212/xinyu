@@ -709,7 +709,7 @@ class Memory {
     const prompt = `你是一位温柔的心理观察者。请为以下对话生成一份回顾报告。
 
 对话内容：
-${ms.map(m=>(m.role==='user'?'用户'：${m.content}':'AI'：${m.content}`)).join('\n')}
+${ms.map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}
 
 请返回严格JSON（不要markdown代码块）：
 {
@@ -1131,7 +1131,13 @@ class App {
       return;
     }
 
-    this.db = await DB.open();
+    try {
+      this.db = await DB.open();
+    } catch(e) {
+      console.warn('DB打开失败，重置', e);
+      indexedDB.deleteDatabase(C.dbName);
+      this.db = await DB.open();
+    }
     this.memory = new Memory(this.db);
     this.api = new API(this.memory);
 
@@ -1650,7 +1656,7 @@ class App {
     const err = document.getElementById('setupError');
     const proxyInput = document.getElementById('setupProxyInput');
 
-    const handleSetup = async () => {
+    btn.addEventListener('click', async () => {
       const key = input.value.trim();
       if (!key || !key.startsWith('sk-')) {
         err.textContent = '请输入有效的 API Key（以 sk- 开头）';
@@ -1667,7 +1673,6 @@ class App {
       try {
         await this._verifyKey();
         overlay.classList.add('hidden');
-        btn.removeEventListener('click', handleSetup);
         await this._fullInit();
       } catch(e) {
         err.textContent = '连接失败：' + (e.message||'请检查Key和网络');
@@ -1675,8 +1680,7 @@ class App {
         btn.disabled = false;
         btn.textContent = '开始使用';
       }
-    };
-    btn.addEventListener('click', handleSetup);
+    }, { once: true });
 
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') btn.click();
@@ -1697,7 +1701,13 @@ class App {
   }
 
   async _fullInit() {
-    this.db = await DB.open();
+    try {
+      this.db = await DB.open();
+    } catch(e) {
+      console.warn('DB打开失败，重置', e);
+      indexedDB.deleteDatabase(C.dbName);
+      this.db = await DB.open();
+    }
     this.memory = new Memory(this.db);
     this.api = new API(this.memory);
 
