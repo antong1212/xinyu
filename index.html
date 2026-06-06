@@ -1137,7 +1137,12 @@ class App {
   async init() {
     // 每次打开清空所有数据，用户手动导入备份
     localStorage.clear();
-    try { indexedDB.deleteDatabase(C.dbName); } catch(e) {}
+    await new Promise((ok) => {
+      const r = indexedDB.deleteDatabase(C.dbName);
+      r.onsuccess = () => ok();
+      r.onerror = () => ok();
+      r.onblocked = () => ok();
+    });
     this._showSetup();
   }
 
@@ -1583,6 +1588,11 @@ class App {
   }
 
   async _import() {
+    // 确保数据库已打开
+    if (!this.db) {
+      try { this.db = await DB.open(); } catch(e) { indexedDB.deleteDatabase(C.dbName); this.db = await DB.open(); }
+      this.memory = new Memory(this.db);
+    }
     // 创建隐藏的文件选择器
     const input = document.createElement('input');
     input.type = 'file'; input.accept = '.json';
