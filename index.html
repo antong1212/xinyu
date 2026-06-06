@@ -1517,8 +1517,22 @@ class App {
     await DB.del(this.db, 'smeta', sid);
     if(sid===this.sid) {
       const all=(await this.memory.allSessMeta()).filter(m=>m.sid!=='current'&&m.sid!==sid);
-      if(all.length>0) await this._switchSession(all[0].sid);
-      else await this._newSession();
+      if(all.length>0) {
+        await this._switchSession(all[0].sid);
+      } else {
+        this.ui.clearChat();
+        this.modal.closeAll();
+        // 回到设置页
+        localStorage.clear();
+        await DB.clear(this.db, 'msgs');
+        await DB.clear(this.db, 'smeta');
+        await DB.clear(this.db, 'profile');
+        await DB.clear(this.db, 'insights');
+        await DB.clear(this.db, 'reports');
+        this._showSetup();
+        this.ui.toast('对话已删除');
+        return;
+      }
     }
     this._openSessions();
     this.ui.toast('对话已删除');
