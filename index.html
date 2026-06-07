@@ -150,6 +150,25 @@ body{
 .action-chip:active{background:var(--border)}
 .action-chip.active{background:var(--accent-light);color:var(--accent);border-color:var(--accent)}
 
+/* Backup reminder */
+.backup-reminder{
+  display:flex;align-items:center;gap:4px;
+  font-size:11px;color:var(--text-muted);
+  padding:3px 10px;border-radius:12px;
+  background:var(--accent-light);opacity:0.85;
+  transition:opacity var(--transition);
+}
+.backup-reminder:hover{opacity:1}
+.info-dot{
+  width:17px;height:17px;border-radius:50%;
+  border:1px solid var(--text-muted);background:transparent;
+  color:var(--text-muted);font-size:11px;font-weight:700;
+  cursor:pointer;font-family:var(--font);
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--transition);flex-shrink:0;padding:0;
+}
+.info-dot:active{background:var(--text-muted);color:var(--bg)}
+
 /* ===== Welcome (inside chat view) ===== */
 .welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;text-align:center}
 .welcome.condensed{justify-content:flex-start;padding-top:16px}
@@ -421,6 +440,10 @@ body{
         </button>
       </div>
       <div class="chat-actions">
+        <span class="backup-reminder">
+          <span class="backup-text">离开前记得备份</span>
+          <button class="info-dot" id="btnBackupInfo" title="为什么需要备份？">i</button>
+        </span>
         <button class="action-chip" id="chipSearch">🔎 搜索</button>
         <button class="action-chip" id="chipDeep">🌙 深度思考</button>
         <button class="action-chip" id="chipSummary">完成对话</button>
@@ -1229,6 +1252,11 @@ class App {
 
     // Generate insight
     document.getElementById('btnGenerateInsight').addEventListener('click', ()=>this._genInsight());
+
+    // Backup info
+    document.getElementById('btnBackupInfo').addEventListener('click', () => {
+      alert('每次打开此间，浏览器中的数据都会被清空——这是保护你隐私的有意设计。\n\n离开前请在右上角菜单选择「导出所有数据」，下载 JSON 备份文件。下次打开时导入备份即可恢复全部对话和记忆。');
+    });
 
     // Sessions
     document.getElementById('btnSessions').addEventListener('click',()=>this._openSessions());
