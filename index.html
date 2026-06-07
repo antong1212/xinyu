@@ -538,21 +538,21 @@ body{
         开始使用
       </button>
       <p id="setupError" style="font-size:12px;color:var(--danger);margin-top:10px;display:none"></p>
-      <div id="setupPassword" style="display:none;text-align:left">
-        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.6">设置一个密码来保护你的数据</p>
-        <input type="password" id="setupPwdInput" placeholder="输入密码"
-          style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
-          background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:8px">
-        <input type="password" id="setupPwdConfirm" placeholder="再次输入密码"
-          style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
-          background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:12px">
-        <p id="setupPwdError" style="font-size:12px;color:var(--danger);margin-bottom:10px;display:none"></p>
-        <button id="btnSetupPassword"
-          style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;
-          font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition)">
-          设置密码并开始
-        </button>
-      </div>
+    </div>
+    <div id="setupPassword" style="display:none;text-align:left">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.6">设置一个密码来保护你的数据</p>
+      <input type="password" id="setupPwdInput" placeholder="输入密码"
+        style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+        background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:8px">
+      <input type="password" id="setupPwdConfirm" placeholder="再次输入密码"
+        style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+        background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:12px">
+      <p id="setupPwdError" style="font-size:12px;color:var(--danger);margin-bottom:10px;display:none"></p>
+      <button id="btnSetupPassword"
+        style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;
+        font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition)">
+        设置密码并开始
+      </button>
     </div>
     <button id="btnSetupToggle"
       style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;font-family:var(--font);margin-top:4px;text-decoration:underline;text-underline-offset:3px">
@@ -1613,20 +1613,6 @@ class App {
     this.generating=false;
   }
 
-  async _autoBackup() {
-    const allMsgs = await DB.all(this.db, 'msgs');
-    const profile = await this.memory.profile();
-    const allMeta = await DB.all(this.db, 'smeta');
-    const insights = await DB.all(this.db, 'insights');
-    const reports = await DB.all(this.db, 'reports');
-    const encodedKey = C.apiKey ? btoa(C.apiKey) : '';
-    const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs, _key_encoded: encodedKey };
-    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=`cijian_${new Date().toISOString().slice(0,10)}.json`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-  }
-
   async _genInsight() {
     if(this.generating) return; this.generating=true;
     this.ui.toast('正在生成个性化洞察…');
@@ -1981,6 +1967,7 @@ class App {
       await DB.clear(this.db, 'msgs'); await DB.clear(this.db, 'profile');
       await DB.clear(this.db, 'smeta'); await DB.clear(this.db, 'insights');
       await DB.clear(this.db, 'reports');
+      C.password = null;
       this.sid=this._genId();
       await DB.put(this.db, 'smeta', { sid:'current', currentSid:this.sid });
       await DB.put(this.db, 'smeta', { sid:this.sid, title:'新的对话', createdAt:Date.now(), lastActive:Date.now(), msgCount:0, summary:'', status:'active' });
