@@ -527,7 +527,7 @@ body{
 
 <script>
 /* ================================================================
-   此间 v2 · 私人AI伴侣
+   此间 v2 · 私人AI
    三层记忆 | 话题卡片 | 个性化洞察 | 自我探索 | 完全本地
    ================================================================ */
 
@@ -685,6 +685,18 @@ const DB = {
     const keys = await new Promise((ok,no)=>{const r=s.index(idx).getAllKeys(val);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);});
     for(const k of keys) await new Promise((res,rej)=>{const r=s.delete(k);r.onsuccess=res;r.onerror=rej;});
     return new Promise(res=>{t.oncomplete=res;});
+  },
+  async bulkPut(db, store, items, batchSize=500) {
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      await new Promise((ok, no) => {
+        const t = db.transaction([store], 'readwrite');
+        const s = t.objectStore(store);
+        for (const item of batch) s.put(item);
+        t.oncomplete = () => ok();
+        t.onerror = () => no(t.error);
+      });
+    }
   }
 };
 
@@ -1706,15 +1718,16 @@ class App {
         await DB.clear(this.db, 'insights');
         await DB.clear(this.db, 'reports');
 
-        // 导入消息
-        if (data.messages) {
-          for (const m of data.messages) {
-            await DB.put(this.db, 'msgs', {
-              sid: m.sid || m.sessionId, role: m.role,
-              content: m.content, ts: m.ts || m.timestamp || Date.now(),
-              compressed: m.compressed || false
-            });
-          }
+        // 导入消息（批量写入）
+        if (data.messages && data.messages.length > 0) {
+          const items = data.messages.map(m => ({
+            sid: m.sid || m.sessionId,
+            role: m.role,
+            content: m.content,
+            ts: m.ts || m.timestamp || Date.now(),
+            compressed: m.compressed || false
+          }));
+          await DB.bulkPut(this.db, 'msgs', items);
         }
 
         // 导入档案
@@ -1722,30 +1735,37 @@ class App {
           await DB.put(this.db, 'profile', { key: 'user_profile', value: data.profile });
         }
 
-        // 导入会话元数据
-        if (data.sessions) {
-          for (const s of data.sessions) {
-            await DB.put(this.db, 'smeta', {
-              sid: s.sid || s.sessionId, title: s.title || '',
-              createdAt: s.createdAt || Date.now(), lastActive: s.lastActive || Date.now(),
-              msgCount: s.msgCount || s.messageCount || 0, summary: s.summary || '',
-              status: s.status || 'active'
-            });
-          }
+        // 导入会话元数据（批量写入）
+        if (data.sessions && data.sessions.length > 0) {
+          const items = data.sessions.map(s => ({
+            sid: s.sid || s.sessionId,
+            title: s.title || '',
+            createdAt: s.createdAt || Date.now(),
+            lastActive: s.lastActive || Date.now(),
+            msgCount: s.msgCount || s.messageCount || 0,
+            summary: s.summary || '',
+            status: s.status || 'active'
+          }));
+          await DB.bulkPut(this.db, 'smeta', items);
         }
 
-        // 导入洞察
-        if (data.insights) {
-          for (const ins of data.insights) {
-            await DB.put(this.db, 'insights', { ts: ins.ts || Date.now(), data: ins.data });
-          }
+        // 导入洞察（批量写入）
+        if (data.insights && data.insights.length > 0) {
+          const items = data.insights.map(ins => ({
+            ts: ins.ts || Date.now(),
+            data: ins.data
+          }));
+          await DB.bulkPut(this.db, 'insights', items);
         }
 
-        // 导入报告
-        if (data.reports) {
-          for (const r of data.reports) {
-            await DB.put(this.db, 'reports', { sid: r.sid, ts: r.ts || Date.now(), data: r.data });
-          }
+        // 导入报告（批量写入）
+        if (data.reports && data.reports.length > 0) {
+          const items = data.reports.map(r => ({
+            sid: r.sid,
+            ts: r.ts || Date.now(),
+            data: r.data
+          }));
+          await DB.bulkPut(this.db, 'reports', items);
         }
 
         this.ui.toast('正在恢复数据…');
@@ -1855,7 +1875,7 @@ class App {
   const manifest = {
     name: '此间 · 私人AI',
     short_name: '此间',
-    description: '温暖私密的AI伴侣，了解你、记住你',
+    description: '有记忆的私人AI，了解你、陪你成长',
     start_url: location.href,
     display: 'standalone',
     background_color: '#f5f0eb',
