@@ -921,7 +921,7 @@ ${ms.map(m=>(m.role==='user'?'用户：'+m.content:'此间：'+m.content)).join(
   async genTopics(sid) {
     const ms = await this.allMsgs(sid);
     if(ms.length<2) return this._defaultTopics();
-    const prompt = `基于用户的对话，生成3个可以开启新对话的话题建议。\n\n${ms.slice(-10).map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}\n\n返回严格JSON：[{"emoji":"😊","title":"简短标题","desc":"一句话描述，邀请用户探索"}]\n话题应该自然、温和、有开放性。不要过于私密或冒犯。`;
+    const prompt = `基于用户的对话，生成3个可以开启新对话的话题建议。\n\n${ms.slice(-10).map(m=>(m.role==='user'?'用户':'AI')+'：'+m.content).join('\n')}\n\n返回严格JSON：[{"emoji":"","title":"简短标题","desc":"一句话描述，邀请用户探索"}]\n话题应该自然、温和、有开放性。不要过于私密或冒犯。`;
     try { const r = await this._apiCall(prompt, false); const p=JSON.parse(r.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim()); return p.slice(0,4); } catch(e) { return this._defaultTopics(); }
   }
 
@@ -2019,7 +2019,7 @@ class App {
         btn.disabled = false;
         btn.textContent = '开始使用';
       }
-    }, { once: true });
+    });
 
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') btn.click();
