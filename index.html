@@ -496,6 +496,7 @@ body{
     <h3>设置</h3>
     <div class="modal-item" id="menuViewProfile"><span>查看我的档案</span><span class="right">›</span></div>
     <div class="modal-item" id="menuSetApiKey"><span>设置 API Key</span><span class="right">›</span></div>
+    <div class="modal-item" id="menuChangePassword"><span>更改密码</span><span class="right">›</span></div>
     <div class="modal-item" id="menuExport"><span>导出所有数据</span><span class="right">›</span></div>
     <div class="modal-item" id="menuImport"><span>导入数据</span><span class="right">›</span></div>
     <div class="modal-item" id="menuClearData"><span>清除所有数据</span><span class="right" style="color:var(--danger)">⚠</span></div>
@@ -537,10 +538,70 @@ body{
         开始使用
       </button>
       <p id="setupError" style="font-size:12px;color:var(--danger);margin-top:10px;display:none"></p>
+      <div id="setupPassword" style="display:none;text-align:left">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.6">设置一个密码来保护你的数据</p>
+        <input type="password" id="setupPwdInput" placeholder="输入密码"
+          style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+          background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:8px">
+        <input type="password" id="setupPwdConfirm" placeholder="再次输入密码"
+          style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+          background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:12px">
+        <p id="setupPwdError" style="font-size:12px;color:var(--danger);margin-bottom:10px;display:none"></p>
+        <button id="btnSetupPassword"
+          style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;
+          font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition)">
+          设置密码并开始
+        </button>
+      </div>
     </div>
     <button id="btnSetupToggle"
       style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;font-family:var(--font);margin-top:4px;text-decoration:underline;text-underline-offset:3px">
       第一次使用？设置 API Key →
+    </button>
+  </div>
+</div>
+
+<!-- Password Modal -->
+<div class="overlay hidden" id="overlayPassword">
+  <div class="modal" style="text-align:center;padding:28px 20px 24px">
+    <h3 style="margin-bottom:16px">输入密码</h3>
+    <input type="password" id="pwdModalInput" placeholder="输入你的密码"
+      style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+      background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:8px">
+    <p id="pwdModalError" style="font-size:12px;color:var(--danger);margin-bottom:12px;display:none">密码错误</p>
+    <button id="btnPwdModalConfirm"
+      style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;
+      font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition)">
+      确认
+    </button>
+    <button id="btnPwdModalCancel"
+      style="width:100%;padding:12px;margin-top:8px;border-radius:14px;border:none;background:var(--border);color:var(--text-secondary);
+      font-size:14px;cursor:pointer;font-family:var(--font)">
+      取消
+    </button>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="overlay hidden" id="overlayChangePwd">
+  <div class="modal" style="text-align:center;padding:28px 20px 24px">
+    <h3 style="margin-bottom:16px">更改密码</h3>
+    <input type="password" id="changePwdNew" placeholder="输入新密码"
+      style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+      background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:8px">
+    <input type="password" id="changePwdConfirm" placeholder="再次输入新密码"
+      style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+      background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);text-align:center;outline:none;margin-bottom:12px">
+    <p id="changePwdError" style="font-size:12px;color:var(--danger);margin-bottom:10px;display:none"></p>
+    <button id="btnChangePwdConfirm"
+      style="width:100%;padding:14px;border-radius:14px;border:none;background:var(--accent);color:#fff;
+      font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all var(--transition)">
+      确认更改
+    </button>
+    <button id="btnChangePwdCancel"
+      style="width:100%;padding:12px;margin-top:8px;border-radius:14px;border:none;background:var(--border);color:var(--text-secondary);
+      font-size:14px;cursor:pointer;font-family:var(--font)">
+      取消
     </button>
   </div>
 </div>
@@ -560,11 +621,49 @@ const C = {
   set apiKey(v) { localStorage.setItem('xy_key', v); },
   get proxyURL() { return localStorage.getItem('xy_proxy') || ''; },
   set proxyURL(v) { localStorage.setItem('xy_proxy', v); },
+  password: null,
   baseURL: 'https://api.deepseek.com/v1/chat/completions',
   flash: 'deepseek-v4-flash',
   pro: 'deepseek-v4-pro',
   workMsgs: 15, compressThreshold: 30,
   dbName: 'PrivateAI_v2', dbVersion: 2
+};
+
+// ── 加密工具（AES-256-GCM + PBKDF2） ──────────────────────────
+const Crypto = {
+  _buf2b64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); },
+  _b642buf(b64) { return Uint8Array.from(atob(b64), c => c.charCodeAt(0)); },
+
+  async _deriveKey(password, salt, usage) {
+    const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      km, { name: 'AES-GCM', length: 256 }, false, [usage]
+    );
+  },
+
+  async encrypt(password, plaintext) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await this._deriveKey(password, salt, 'encrypt');
+    const encoded = new TextEncoder().encode(plaintext);
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+    return {
+      enc: true, v: 1,
+      salt: this._buf2b64(salt),
+      iv: this._buf2b64(iv),
+      data: this._buf2b64(ct)
+    };
+  },
+
+  async decrypt(password, encrypted) {
+    const salt = this._b642buf(encrypted.salt);
+    const iv = this._b642buf(encrypted.iv);
+    const ct = this._b642buf(encrypted.data);
+    const key = await this._deriveKey(password, salt, 'decrypt');
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(decrypted);
+  }
 };
 
 // ── 系统提示词 ────────────────────────────────────────────────
@@ -1125,7 +1224,7 @@ class UI {
 
 // ── 模态框 ────────────────────────────────────────────────────
 class Modal {
-  constructor() { this.ovs={sessions:document.getElementById('overlaySessions'),menu:document.getElementById('overlayMenu'),profile:document.getElementById('overlayProfile')}; }
+  constructor() { this.ovs={sessions:document.getElementById('overlaySessions'),menu:document.getElementById('overlayMenu'),profile:document.getElementById('overlayProfile'),password:document.getElementById('overlayPassword')}; }
   open(n) { Object.entries(this.ovs).forEach(([k,v])=>v.classList.toggle('hidden',k!==n)); }
   closeAll() { Object.values(this.ovs).forEach(v=>v.classList.add('hidden')); }
 }
@@ -1267,6 +1366,7 @@ class App {
     document.getElementById('btnNewSession').addEventListener('click',()=>{this.modal.closeAll();this._newSession();});
     document.getElementById('menuViewProfile').addEventListener('click',()=>this._viewProfile());
     document.getElementById('menuSetApiKey').addEventListener('click',()=>this._setApiKey());
+    document.getElementById('menuChangePassword').addEventListener('click',()=>this._changePassword());
     document.getElementById('menuExport').addEventListener('click',()=>this._export());
     document.getElementById('menuImport').addEventListener('click',()=>this._import());
     document.getElementById('menuClearData').addEventListener('click',()=>this._clearAll());
@@ -1683,6 +1783,43 @@ class App {
     this.modal.open('profile');
   }
 
+  async _changePassword() {
+    this.modal.closeAll();
+    // 第一步：验证旧密码
+    let oldPwd;
+    try { oldPwd = await this._promptPassword(true); } catch(e) { return; }
+    // 第二步：输入新密码两次
+    const overlay = document.getElementById('overlayChangePwd');
+    const newInput = document.getElementById('changePwdNew');
+    const confirmInput = document.getElementById('changePwdConfirm');
+    const err = document.getElementById('changePwdError');
+    const btnConfirm = document.getElementById('btnChangePwdConfirm');
+    const btnCancel = document.getElementById('btnChangePwdCancel');
+    const cleanup = () => {
+      overlay.classList.add('hidden');
+      newInput.value = ''; confirmInput.value = '';
+      err.style.display = 'none';
+    };
+    overlay.classList.remove('hidden');
+    newInput.focus();
+    return new Promise((resolve, reject) => {
+      btnConfirm.onclick = async () => {
+        const pwd1 = newInput.value;
+        const pwd2 = confirmInput.value;
+        if (!pwd1) { err.textContent = '请输入新密码'; err.style.display = 'block'; return; }
+        if (pwd1 !== pwd2) { err.textContent = '两次密码不一致'; err.style.display = 'block'; return; }
+        C.password = pwd1;
+        await this._storePwVerify(pwd1);
+        cleanup();
+        this.ui.toast('密码已更改。请记得重新导出备份。');
+        resolve();
+      };
+      btnCancel.onclick = () => { cleanup(); reject(new Error('取消')); };
+      newInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmInput.focus(); });
+      confirmInput.addEventListener('keydown', e => { if (e.key === 'Enter') btnConfirm.click(); });
+    }).catch(() => {});
+  }
+
   async _setApiKey() {
     const cur = C.apiKey; const masked = cur ? cur.slice(0,8)+'…'+cur.slice(-4) : '（未设置）';
     const curProxy = C.proxyURL || '（未使用代理）';
@@ -1695,19 +1832,24 @@ class App {
 
   async _export() {
     try {
+      let pwd = C.password;
+      if (!pwd) {
+        try { pwd = await this._promptPassword(true); } catch(e) { return; }
+        await this._storePwVerify(pwd);
+      }
       const allMsgs = await DB.all(this.db, 'msgs');
       const profile = await this.memory.profile();
       const allMeta = await DB.all(this.db, 'smeta');
       const insights = await DB.all(this.db, 'insights');
       const reports = await DB.all(this.db, 'reports');
-      // key 用 base64 编码防明文泄露
       const encodedKey = C.apiKey ? btoa(C.apiKey) : '';
-      const data = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs, _key_encoded: encodedKey };
-      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const plainData = { exportedAt:new Date().toISOString(), profile, sessions:allMeta.filter(m=>m.sid!=='current'), insights, reports, messages:allMsgs, _key_encoded: encodedKey };
+      const encrypted = await Crypto.encrypt(pwd, JSON.stringify(plainData));
+      const blob = new Blob([JSON.stringify(encrypted)],{type:'application/json'});
       const url = URL.createObjectURL(blob);
       const a=document.createElement('a'); a.href=url; a.download=`cijian_${new Date().toISOString().slice(0,10)}.json`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      this.modal.closeAll(); this.ui.toast('数据已导出');
+      this.modal.closeAll(); this.ui.toast('数据已加密导出');
     } catch(e) { this.ui.toast('导出失败'); }
   }
 
@@ -1725,7 +1867,25 @@ class App {
       if (!file) return;
       try {
         const text = await file.text();
-        const data = JSON.parse(text);
+        const raw = JSON.parse(text);
+
+        let data;
+        if (raw.enc) {
+          // 加密格式：需要密码解密
+          let pwd;
+          try { pwd = await this._promptPassword(false); } catch(e) { return; }
+          try {
+            const decrypted = await Crypto.decrypt(pwd, raw);
+            data = JSON.parse(decrypted);
+            C.password = pwd;
+            await this._storePwVerify(pwd);
+          } catch(e) {
+            this.ui.toast('密码错误'); return;
+          }
+        } else {
+          // 旧格式：明文 JSON
+          data = raw;
+        }
 
         // 验证格式
         if (!data.messages || !data.exportedAt) {
@@ -1861,8 +2021,11 @@ class App {
       btn.textContent = '验证中…';
       try {
         await this._verifyKey();
-        overlay.classList.add('hidden');
-        await this._initAfterSetup();
+        // 隐藏 Key 输入和切换按钮，显示密码设置面板
+        firstTime.style.display = 'none';
+        toggle.style.display = 'none';
+        document.getElementById('setupPassword').style.display = 'block';
+        document.getElementById('setupPwdInput').focus();
       } catch(e) {
         err.textContent = '连接失败：' + (e.message||'请检查Key和网络');
         err.style.display = 'block';
@@ -1875,10 +2038,81 @@ class App {
       if (e.key === 'Enter') btn.click();
     });
 
+    // 密码设置按钮
+    const pwdBtn = document.getElementById('btnSetupPassword');
+    const pwdErr = document.getElementById('setupPwdError');
+    const pwdInput = document.getElementById('setupPwdInput');
+    const pwdConfirm = document.getElementById('setupPwdConfirm');
+    pwdBtn.addEventListener('click', async () => {
+      const pwd = pwdInput.value;
+      if (!pwd) {
+        pwdErr.textContent = '请输入密码';
+        pwdErr.style.display = 'block';
+        return;
+      }
+      if (pwd !== pwdConfirm.value) {
+        pwdErr.textContent = '两次密码不一致';
+        pwdErr.style.display = 'block';
+        return;
+      }
+      pwdErr.style.display = 'none';
+      C.password = pwd;
+      overlay.classList.add('hidden');
+      await this._initAfterSetup();
+      await this._storePwVerify(pwd);
+    });
+    pwdInput.addEventListener('keydown', e => { if (e.key === 'Enter') pwdConfirm.focus(); });
+    pwdConfirm.addEventListener('keydown', e => { if (e.key === 'Enter') pwdBtn.click(); });
+
     // 导入备份
     document.getElementById('btnSetupImport').addEventListener('click', () => {
       overlay.classList.add('hidden');
       this._import();
+    });
+  }
+
+  _promptPassword(verify = false) {
+    return new Promise((resolve, reject) => {
+      const overlay = document.getElementById('overlayPassword');
+      const input = document.getElementById('pwdModalInput');
+      const err = document.getElementById('pwdModalError');
+      const btnConfirm = document.getElementById('btnPwdModalConfirm');
+      const btnCancel = document.getElementById('btnPwdModalCancel');
+
+      const cleanup = () => {
+        overlay.classList.add('hidden');
+        input.value = '';
+        err.style.display = 'none';
+        btnConfirm.onclick = null;
+        btnCancel.onclick = null;
+        input.onkeydown = null;
+      };
+
+      const onSubmit = async () => {
+        const pwd = input.value;
+        if (!pwd) return;
+        if (verify) {
+          const ok = await this._verifyPassword(pwd);
+          if (!ok) {
+            err.style.display = 'block';
+            input.value = '';
+            input.focus();
+            return;
+          }
+        }
+        C.password = pwd;
+        cleanup();
+        resolve(pwd);
+      };
+
+      btnConfirm.onclick = onSubmit;
+      btnCancel.onclick = () => { cleanup(); reject(new Error('取消')); };
+      input.onkeydown = e => { if (e.key === 'Enter') onSubmit(); };
+
+      overlay.classList.remove('hidden');
+      err.style.display = 'none';
+      input.value = '';
+      input.focus();
     });
   }
 
@@ -1893,6 +2127,24 @@ class App {
       if (resp.status === 401) throw new Error('API Key 无效');
       throw new Error(`HTTP ${resp.status}`);
     }
+  }
+
+  async _storePwVerify(password) {
+    if (!this.db) return;
+    try {
+      const token = await Crypto.encrypt(password, '此间验证');
+      await DB.put(this.db, 'profile', { key: 'pw_verify', value: token });
+    } catch(e) { console.error('存储密码令牌失败', e); }
+  }
+
+  async _verifyPassword(password) {
+    if (!this.db) return false;
+    try {
+      const rec = await DB.get(this.db, 'profile', 'pw_verify');
+      if (!rec || !rec.value) return false;
+      const decrypted = await Crypto.decrypt(password, rec.value);
+      return decrypted === '此间验证';
+    } catch(e) { return false; }
   }
 
   _genId() { return 'sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); }
